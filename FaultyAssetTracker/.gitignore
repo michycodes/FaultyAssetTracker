@@ -1,0 +1,15 @@
+﻿# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+
+# Rider / VSCode
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+*.DS_Store
