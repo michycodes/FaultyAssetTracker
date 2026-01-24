@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FaultyAssetTracker.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260124142329_AddAuditLogs")]
-    partial class AddAuditLogs
+    [Migration("20260124193900_FaultyAssets")]
+    partial class FaultyAssets
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,6 +58,10 @@ namespace FaultyAssetTracker.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AssetName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AssetTag")
                         .IsRequired()
