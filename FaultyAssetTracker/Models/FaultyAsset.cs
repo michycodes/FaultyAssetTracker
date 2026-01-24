@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public string Category { get; set; }
+        public string AssetName { get; set; } = string.Empty;
         public string TicketId { get; set; }
         public string SerialNo { get; set; }
         public string AssetTag { get; set; }

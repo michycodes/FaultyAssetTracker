@@ -11,6 +11,8 @@ namespace FaultyAssetTracker.Data
         }
 
         public DbSet<FaultyAsset> FaultyAssets { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
