@@ -2,9 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using FaultyAssetTracker.Data;
 using FaultyAssetTracker.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FaultyAssetTracker.Controllers
 {
+    [Authorize(Roles = "Admin,Employee")]
     [Route("api/[controller]")]
     [ApiController]
     public class FaultyAssetsController : ControllerBase
@@ -54,8 +56,11 @@ namespace FaultyAssetTracker.Controllers
 
             _context.FaultyAssets.Add(asset);
             await _context.SaveChangesAsync();
+            var user = User.Identity?.Name ?? "system";
+            await LogAudit(asset.Id, user, $"created asset {asset.SerialNo}");
 
-            await LogAudit(asset.Id, $"created asset {asset.AssetName}");
+
+            // await LogAudit(asset.Id, $"created asset {asset.AssetName}");
 
             return CreatedAtAction(nameof(GetById), new { id = asset.Id }, asset);
         }
@@ -80,7 +85,10 @@ namespace FaultyAssetTracker.Controllers
             try
             {
                 await _context.SaveChangesAsync();
-                await LogAudit(asset.Id, $"updated asset {asset.AssetName}");
+                var user = User.Identity?.Name ?? "system";
+                await LogAudit(asset.Id, user, "updated asset");
+
+              //  await LogAudit(asset.Id, $"updated asset {asset.AssetName}");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -93,6 +101,7 @@ namespace FaultyAssetTracker.Controllers
         }
 
         // DELETE: api/FaultyAssets/5(Deletes asset)
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -103,7 +112,11 @@ namespace FaultyAssetTracker.Controllers
             _context.FaultyAssets.Remove(asset);
             await _context.SaveChangesAsync();
 
-            await LogAudit(id, $"deleted asset {asset.AssetName}");
+            var user = User.Identity?.Name ?? "system";
+            await LogAudit(asset.Id, user, $"deleted asset {asset.SerialNo}");
+
+
+           // await LogAudit(id, $"deleted asset {asset.AssetName}");
 
             return NoContent();
         }
@@ -150,7 +163,7 @@ namespace FaultyAssetTracker.Controllers
         }
 
         // AUDIT LOGGER(shows the person who last made changes to a file)
-        private async Task LogAudit(int assetId, string message)
+        private async Task LogAudit(int assetId, string message, string v)
         {
             var username = User.Identity?.Name ?? "unknown";
 
