@@ -65,7 +65,8 @@ namespace FaultyAssetTracker.Controllers
             return CreatedAtAction(nameof(GetById), new { id = asset.Id }, asset);
         }
 
-        // PUT: api/FaultyAssets/5 
+        // PUT: api/FaultyAssets/5
+        [Authorize(Roles = "Admin,Employee")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, FaultyAsset asset)
         {

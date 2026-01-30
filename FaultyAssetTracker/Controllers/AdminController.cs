@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-[Authorize(Roles = "Admin")]
+//[Authorize(Roles = "Admin")]
 [Route("api/admin")]
 [ApiController]
 public class AdminController : ControllerBase
