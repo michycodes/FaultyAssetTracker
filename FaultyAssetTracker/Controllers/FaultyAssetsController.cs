@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace FaultyAssetTracker.Controllers
 {
-    [Authorize(Roles = "Admin,Employee")]
+    // [Authorize(Roles = "Admin,Employee")]
     [Route("api/[controller]")]
     [ApiController]
     public class FaultyAssetsController : ControllerBase
