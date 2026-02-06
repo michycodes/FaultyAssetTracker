@@ -20,21 +20,45 @@ namespace FaultyAssetTracker.Controllers
 
         // GET: api/FaultyAssets (Lists all the assets)
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<FaultyAsset>>> GetAll()
+        public async Task<ActionResult<IEnumerable<FaultyAssetDto>>> GetAll()
         {
-            return await _context.FaultyAssets.ToListAsync();
+            return await _context.FaultyAssets
+                .Select(a => new FaultyAssetDto
+                {
+                    AssetTag = a.AssetTag,
+                    SerialNo = a.SerialNo,
+                    Vendor = a.Vendor,
+                    Branch = a.Branch,
+                    Status = a.Status,
+                    RepairCost = a.RepairCost
+                })
+                .ToListAsync();
         }
 
+
         // GET: api/FaultyAssets/5 (searches for an asset with id)
-        [HttpGet("{id}")]
-        public async Task<ActionResult<FaultyAsset>> GetById(int id)
+        [HttpGet("{assetTag}")]
+        public async Task<ActionResult<FaultyAssetDto>> GetByAssetTag(string assetTag)
         {
-            var asset = await _context.FaultyAssets.FindAsync(id);
+            var asset = await _context.FaultyAssets
+                .Where(a => a.AssetTag == assetTag)
+                .Select(a => new FaultyAssetDto
+                {
+                    AssetTag = a.AssetTag,
+                    SerialNo = a.SerialNo,
+                    Vendor = a.Vendor,
+                    Branch = a.Branch,
+                    Status = a.Status,
+                    RepairCost = a.RepairCost
+                })
+                .FirstOrDefaultAsync();
+
             if (asset == null)
                 return NotFound();
 
             return asset;
         }
+
 
         // POST: api/FaultyAssets 
         [HttpPost]
@@ -62,7 +86,7 @@ namespace FaultyAssetTracker.Controllers
 
             // await LogAudit(asset.Id, $"created asset {asset.AssetName}");
 
-            return CreatedAtAction(nameof(GetById), new { id = asset.Id }, asset);
+            return CreatedAtAction(nameof(GetByAssetTag), new { assetTag = asset.AssetTag}, asset);
         }
 
         // PUT: api/FaultyAssets/5
@@ -142,26 +166,25 @@ namespace FaultyAssetTracker.Controllers
             });
         }
 
-        // GET: api/FaultyAssets/search?status=Pending&vendor=TechFix&branch=Lagos
+        // GET: api/FaultyAssets/search?AssetTag
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<FaultyAsset>>> Search(
-            [FromQuery] string? status,
-            [FromQuery] string? vendor,
-            [FromQuery] string? branch)
+        public async Task<ActionResult<IEnumerable<FaultyAssetDto>>> Search(
+    [FromQuery] string AssetTag)
         {
-            var query = _context.FaultyAssets.AsQueryable();
-
-            if (!string.IsNullOrEmpty(status))
-                query = query.Where(a => a.Status == status);
-
-            if (!string.IsNullOrEmpty(vendor))
-                query = query.Where(a => a.Vendor.Contains(vendor));
-
-            if (!string.IsNullOrEmpty(branch))
-                query = query.Where(a => a.Branch.Contains(branch));
-
-            return await query.ToListAsync();
+            return await _context.FaultyAssets
+                .Where(a => a.AssetTag == AssetTag)
+                .Select(a => new FaultyAssetDto
+                {
+                    AssetTag = a.AssetTag,
+                    SerialNo = a.SerialNo,
+                    Vendor = a.Vendor,
+                    Branch = a.Branch,
+                    Status = a.Status,
+                    RepairCost = a.RepairCost
+                })
+                .ToListAsync();
         }
+
 
         // AUDIT LOGGER(shows the person who last made changes to a file)
         private async Task LogAudit(int assetId, string message, string v)
