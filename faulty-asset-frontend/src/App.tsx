@@ -1,14 +1,30 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import "./App.css";
+import AssetList from "./components/AssetList";
+import AssetStats from "./components/AssetStats";
 import CreateAsset from "./components/CreateAsset";
-import { isLoggedIn, login, logout } from "./services/auth";
+import {
+  getDisplayUser,
+  getUserRoles,
+  isLoggedIn,
+  login,
+  logout,
+} from "./services/auth";
+
+type View = "stats" | "assets";
 
 function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeView, setActiveView] = useState<View>("stats");
+  const [showCreateAsset, setShowCreateAsset] = useState(false);
+
+  const roles = useMemo(() => getUserRoles(), [loggedIn]);
+  const displayUser = useMemo(() => getDisplayUser(), [loggedIn]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,6 +34,7 @@ function App() {
       await login(email, password);
       setLoggedIn(true);
       setPassword("");
+      setRefreshKey((k) => k + 1);
     } catch {
       setError("Login failed. Check your email/password and backend status.");
     }
@@ -26,17 +43,20 @@ function App() {
   const handleLogout = () => {
     logout();
     setLoggedIn(false);
+    setShowCreateAsset(false);
   };
 
-  return (
-    <main style={{ maxWidth: 700, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1>Faulty Asset Tracker</h1>
+  const handleCreated = () => {
+    setRefreshKey((k) => k + 1);
+    setShowCreateAsset(false);
+    setActiveView("assets");
+  };
 
-      {!loggedIn ? (
-        <form
-          onSubmit={handleLogin}
-          style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 380 }}
-        >
+  if (!loggedIn) {
+    return (
+      <main className="login-page">
+        <form onSubmit={handleLogin} className="login-card">
+          <h1>Faulty Asset Tracker</h1>
           <h2>Login</h2>
           <input
             type="email"
@@ -53,16 +73,57 @@ function App() {
             required
           />
           <button type="submit">Login</button>
-          {error && <p style={{ color: "red" }}>{error}</p>}
+          {error && <p className="error-text">{error}</p>}
         </form>
-      ) : (
-        <>
-          <button onClick={handleLogout} style={{ marginBottom: "1rem" }}>
-            Logout
-          </button>
-          <CreateAsset />
-        </>
-      )}
+      </main>
+    );
+  }
+
+  return (
+    <main className="app-shell">
+      <aside className="sidebar">
+        <h2>Menu</h2>
+        <button
+          className={activeView === "stats" ? "nav-btn active" : "nav-btn"}
+          onClick={() => setActiveView("stats")}
+        >
+          Stats
+        </button>
+        <button
+          className={activeView === "assets" ? "nav-btn active" : "nav-btn"}
+          onClick={() => setActiveView("assets")}
+        >
+          View Assets
+        </button>
+      </aside>
+
+      <section className="content-area">
+        <header className="topbar">
+          <div>
+            <h1>Faulty Asset Tracker</h1>
+            <p>
+              <strong>User:</strong> {displayUser || "Unknown user"} | <strong>Roles:</strong>{" "}
+              {roles.length > 0 ? roles.join(", ") : "No roles in token"}
+            </p>
+          </div>
+
+          <div className="topbar-actions">
+            <button onClick={() => setShowCreateAsset((s) => !s)}>
+              {showCreateAsset ? "Close Create Form" : "Create Faulty Asset"}
+            </button>
+            <button onClick={handleLogout}>Logout</button>
+          </div>
+        </header>
+
+        {showCreateAsset && (
+          <div className="create-panel">
+            <CreateAsset onCreated={handleCreated} />
+          </div>
+        )}
+
+        {!showCreateAsset && activeView === "stats" && <AssetStats refreshKey={refreshKey} />}
+        {!showCreateAsset && activeView === "assets" && <AssetList refreshKey={refreshKey} />}
+      </section>
     </main>
   );
 }

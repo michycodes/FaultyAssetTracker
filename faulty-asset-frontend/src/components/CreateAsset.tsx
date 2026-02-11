@@ -17,6 +17,10 @@ type AssetForm = {
   status: "Pending" | "In Repair" | "Repaired";
 };
 
+type CreateAssetProps = {
+  onCreated?: () => void;
+};
+
 const initialForm: AssetForm = {
   category: "",
   assetName: "",
@@ -33,7 +37,7 @@ const initialForm: AssetForm = {
   status: "Pending",
 };
 
-function CreateAsset() {
+function CreateAsset({ onCreated }: CreateAssetProps) {
   const [form, setForm] = useState<AssetForm>(initialForm);
 
   const handleChange = (
@@ -69,6 +73,7 @@ function CreateAsset() {
 
       alert("Asset created successfully");
       setForm(initialForm);
+      onCreated?.();
     } catch (error: unknown) {
       let message =
         "Failed to create asset. Make sure you are logged in and your user has Admin or Employee role.";
