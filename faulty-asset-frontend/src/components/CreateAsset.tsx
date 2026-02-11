@@ -1,77 +1,170 @@
 import { useState } from "react";
+import api from "../services/api";
+
+type AssetForm = {
+  category: string;
+  assetName: string;
+  ticketId: string;
+  serialNo: string;
+  assetTag: string;
+  branch: string;
+  dateReceived: string;
+  receivedBy: string;
+  vendor: string;
+  faultReported: string;
+  vendorPickupDate: string;
+  repairCost: string;
+  status: "Pending" | "In Repair" | "Repaired";
+};
+
+const initialForm: AssetForm = {
+  category: "",
+  assetName: "",
+  ticketId: "",
+  serialNo: "",
+  assetTag: "",
+  branch: "",
+  dateReceived: "",
+  receivedBy: "",
+  vendor: "",
+  faultReported: "",
+  vendorPickupDate: "",
+  repairCost: "",
+  status: "Pending",
+};
 
 function CreateAsset() {
-  const [form, setForm] = useState({
-    assetTag: "",
-    serialNo: "",
-    vendor: "",
-    branch: "",
-    status: "Pending",
-    faultReported: "",
-    repairCost: "",
-    dateRetrieved: "",
-  });
+  const [form, setForm] = useState<AssetForm>(initialForm);
 
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >,
   ) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const response = await fetch("https://localhost:7208/api/FaultyAssets", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // later we'll add Authorization: Bearer token here
-      },
-      body: JSON.stringify({
-        ...form,
-        repairCost: Number(form.repairCost),
-      }),
-    });
-
-    if (response.ok) {
-      alert("asset created successfully");
-      setForm({
-        assetTag: "",
-        serialNo: "",
-        vendor: "",
-        branch: "",
-        status: "",
-        faultReported: "",
-        repairCost: "",
-        dateRetrieved: "",
+    try {
+      await api.post("/FaultyAssets", {
+        category: form.category,
+        assetName: form.assetName,
+        ticketId: form.ticketId,
+        serialNo: form.serialNo,
+        assetTag: form.assetTag,
+        branch: form.branch,
+        dateReceived: form.dateReceived,
+        receivedBy: form.receivedBy,
+        vendor: form.vendor,
+        faultReported: form.faultReported,
+        vendorPickupDate: form.vendorPickupDate || null,
+        repairCost: form.repairCost === "" ? null : Number(form.repairCost),
+        status: form.status,
       });
-    } else {
-      alert("failed to create asset");
+
+      alert("Asset created successfully");
+      setForm(initialForm);
+    } catch (error: unknown) {
+      let message =
+        "Failed to create asset. Make sure you are logged in and your user has Admin or Employee role.";
+
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "data" in error.response
+      ) {
+        const responseData = error.response.data;
+
+        if (typeof responseData === "string") {
+          message = responseData;
+        } else if (
+          typeof responseData === "object" &&
+          responseData !== null &&
+          "title" in responseData &&
+          typeof responseData.title === "string"
+        ) {
+          message = responseData.title;
+        }
+      }
+
+      alert(message);
     }
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: "0 auto" }}>
-      <h2>create faulty asset</h2>
+    <div style={{ maxWidth: 700, margin: "0 auto" }}>
+      <h2>Create Faulty Asset</h2>
 
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+      >
         <input
-          name="assetTag"
-          placeholder="asset tag"
-          value={form.assetTag}
+          name="category"
+          placeholder="category"
+          value={form.category}
           onChange={handleChange}
+          required
+        />
+        <input
+          name="assetName"
+          placeholder="asset name"
+          value={form.assetName}
+          onChange={handleChange}
+          required
         />
 
+        <input
+          name="ticketId"
+          placeholder="ticket id"
+          value={form.ticketId}
+          onChange={handleChange}
+          required
+        />
         <input
           name="serialNo"
           placeholder="serial number"
           value={form.serialNo}
           onChange={handleChange}
+          required
+        />
+
+        <input
+          name="assetTag"
+          placeholder="asset tag"
+          value={form.assetTag}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="branch"
+          placeholder="branch"
+          value={form.branch}
+          onChange={handleChange}
+          required
+        />
+
+        <input
+          type="date"
+          name="dateReceived"
+          value={form.dateReceived}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="receivedBy"
+          placeholder="received by"
+          value={form.receivedBy}
+          onChange={handleChange}
+          required
         />
 
         <input
@@ -79,15 +172,23 @@ function CreateAsset() {
           placeholder="vendor"
           value={form.vendor}
           onChange={handleChange}
+          required
         />
-
         <input
-          name="branch"
-          placeholder="branch"
-          value={form.branch}
+          type="date"
+          name="vendorPickupDate"
+          value={form.vendorPickupDate}
           onChange={handleChange}
         />
 
+        <input
+          type="number"
+          name="repairCost"
+          placeholder="repair cost"
+          value={form.repairCost}
+          onChange={handleChange}
+          min={0}
+        />
         <select name="status" value={form.status} onChange={handleChange}>
           <option value="Pending">Pending</option>
           <option value="In Repair">In Repair</option>
@@ -99,24 +200,13 @@ function CreateAsset() {
           placeholder="fault reported"
           value={form.faultReported}
           onChange={handleChange}
+          required
+          style={{ gridColumn: "1 / -1" }}
         />
 
-        <input
-          type="number"
-          name="repairCost"
-          placeholder="repair cost"
-          value={form.repairCost}
-          onChange={handleChange}
-        />
-
-        <input
-          type="date"
-          name="dateRetrieved"
-          value={form.dateRetrieved}
-          onChange={handleChange}
-        />
-
-        <button type="submit">create asset</button>
+        <button type="submit" style={{ gridColumn: "1 / -1" }}>
+          Create Asset
+        </button>
       </form>
     </div>
   );
