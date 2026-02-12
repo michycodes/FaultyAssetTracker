@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "../services/api";
 
 type AssetListItem = {
@@ -24,13 +24,20 @@ type AssetListProps = {
   refreshKey: number;
 };
 
-type SortBy = "latest" | "status" | "costHighLow" | "costLowHigh" | "assetTag";
+type SortBy = "repaired" | "inRepair" | "pending";
+
+const statusSortOrders: Record<SortBy, string[]> = {
+  repaired: ["Repaired", "In Repair", "Pending"],
+  inRepair: ["In Repair", "Pending", "Repaired"],
+  pending: ["Pending", "In Repair", "Repaired"],
+};
 
 function AssetList({ refreshKey }: AssetListProps) {
   const [assets, setAssets] = useState<AssetListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("latest");
+  const [sortBy, setSortBy] = useState<SortBy>("pending");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [openAuditFor, setOpenAuditFor] = useState<string>("");
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -54,27 +61,34 @@ function AssetList({ refreshKey }: AssetListProps) {
     void fetchAssets();
   }, [refreshKey]);
 
-  const sortedAssets = useMemo(() => {
+  const filteredAndSortedAssets = useMemo(() => {
     const list = [...assets];
 
-    if (sortBy === "latest") {
-      list.sort((a, b) => {
-        const aTime = a.lastModifiedAt ? new Date(a.lastModifiedAt).getTime() : 0;
-        const bTime = b.lastModifiedAt ? new Date(b.lastModifiedAt).getTime() : 0;
-        return bTime - aTime;
-      });
-    } else if (sortBy === "status") {
-      list.sort((a, b) => a.status.localeCompare(b.status));
-    } else if (sortBy === "costHighLow") {
-      list.sort((a, b) => (b.repairCost ?? -1) - (a.repairCost ?? -1));
-    } else if (sortBy === "costLowHigh") {
-      list.sort((a, b) => (a.repairCost ?? Number.MAX_SAFE_INTEGER) - (b.repairCost ?? Number.MAX_SAFE_INTEGER));
-    } else if (sortBy === "assetTag") {
-      list.sort((a, b) => a.assetTag.localeCompare(b.assetTag));
-    }
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const filtered = normalizedSearch
+      ? list.filter((asset) =>
+          asset.assetTag.toLowerCase().includes(normalizedSearch)
+        )
+      : list;
 
-    return list;
-  }, [assets, sortBy]);
+    const sortOrder = statusSortOrders[sortBy].map((s) =>
+      s.toLowerCase()
+    );
+
+    filtered.sort((a, b) => {
+      const aIndex = sortOrder.indexOf(a.status.toLowerCase());
+      const bIndex = sortOrder.indexOf(b.status.toLowerCase());
+
+      if (aIndex !== bIndex) {
+        return (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) -
+          (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex);
+      }
+
+      return a.assetTag.localeCompare(b.assetTag);
+    });
+
+    return filtered;
+  }, [assets, searchTerm, sortBy]);
 
   const handleAuditToggle = async (assetTag: string) => {
     if (openAuditFor === assetTag) {
@@ -87,7 +101,9 @@ function AssetList({ refreshKey }: AssetListProps) {
     setAuditLoading(true);
 
     try {
-      const response = await api.get<AuditLogItem[]>(`/FaultyAssets/${encodeURIComponent(assetTag)}/audit`);
+      const response = await api.get<AuditLogItem[]>(
+        `/FaultyAssets/${encodeURIComponent(assetTag)}/audit`
+      );
       setAuditLogs(response.data);
     } catch {
       setAuditLogs([]);
@@ -96,7 +112,7 @@ function AssetList({ refreshKey }: AssetListProps) {
     }
   };
 
-  if (loading) return <p>Loading assets...</p>;
+  if (loading) return <p>loading assets...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
@@ -107,27 +123,48 @@ function AssetList({ refreshKey }: AssetListProps) {
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "0.75rem",
+          gap: "1rem",
+          flexWrap: "wrap",
         }}
       >
-        <h2 style={{ margin: 0 }}>Assets</h2>
+        <h2 style={{ margin: 0 }}>assets</h2>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          Sort by
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)}>
-            <option value="latest">Latest Modified</option>
-            <option value="assetTag">Asset Tag</option>
-            <option value="status">Status</option>
-            <option value="costHighLow">Repair Cost (High-Low)</option>
-            <option value="costLowHigh">Repair Cost (Low-High)</option>
-          </select>
-        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <label>
+            search tag
+            <input
+              type="text"
+              placeholder="search by asset tag"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </label>
+
+          <label>
+            sort by status
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+            >
+              <option value="repaired">repaired</option>
+              <option value="inRepair">in repair</option>
+              <option value="pending">pending</option>
+            </select>
+          </label>
+        </div>
       </div>
 
-      {sortedAssets.length === 0 ? (
-        <p>No assets found yet.</p>
+      {filteredAndSortedAssets.length === 0 ? (
+        <p>no assets found yet.</p>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-          {sortedAssets.map((asset) => (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {filteredAndSortedAssets.map((asset) => (
             <article
               key={`${asset.assetTag}-${asset.serialNo}`}
               style={{
@@ -138,7 +175,12 @@ function AssetList({ refreshKey }: AssetListProps) {
                 boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
                 <strong>{asset.assetTag}</strong>
                 <span
                   style={{
@@ -152,36 +194,32 @@ function AssetList({ refreshKey }: AssetListProps) {
                 </span>
               </div>
 
-              <p style={{ margin: "0.4rem 0" }}><strong>Serial:</strong> {asset.serialNo}</p>
-              <p style={{ margin: "0.4rem 0" }}><strong>Vendor:</strong> {asset.vendor}</p>
-              <p style={{ margin: "0.4rem 0" }}><strong>Branch:</strong> {asset.branch}</p>
-              <p style={{ margin: "0.4rem 0" }}>
-                <strong>Repair Cost:</strong> {asset.repairCost == null ? "-" : asset.repairCost.toLocaleString()}
-              </p>
-              <p style={{ margin: "0.4rem 0" }}>
-                <strong>Last Modified By:</strong> {asset.lastModifiedBy || "unknown"}
-              </p>
-              <p style={{ margin: "0.4rem 0" }}>
-                <strong>Last Modified At:</strong>{" "}
-                {asset.lastModifiedAt ? new Date(asset.lastModifiedAt).toLocaleString() : "-"}
-              </p>
+              <p><strong>serial:</strong> {asset.serialNo}</p>
+              <p><strong>vendor:</strong> {asset.vendor}</p>
+              <p><strong>branch:</strong> {asset.branch}</p>
+              <p><strong>repair cost:</strong> {asset.repairCost ?? "n/a"}</p>
 
-              <button onClick={() => handleAuditToggle(asset.assetTag)}>
-                {openAuditFor === asset.assetTag ? "Hide Audit Trail" : "Show Audit Trail"}
+              <button
+                style={{ marginTop: 8 }}
+                onClick={() => handleAuditToggle(asset.assetTag)}
+              >
+                {openAuditFor === asset.assetTag ? "hide audit" : "view audit"}
               </button>
 
               {openAuditFor === asset.assetTag && (
-                <div style={{ marginTop: "0.75rem", borderTop: "1px solid #e5e7eb", paddingTop: "0.75rem" }}>
-                  <h4 style={{ margin: 0, marginBottom: "0.5rem" }}>Audit Trail</h4>
+                <div style={{ marginTop: "0.75rem" }}>
+                  <h4>audit trail</h4>
                   {auditLoading ? (
-                    <p>Loading audit...</p>
+                    <p>loading audit...</p>
                   ) : auditLogs.length === 0 ? (
-                    <p>No audit logs found.</p>
+                    <p>no audit logs found.</p>
                   ) : (
-                    <ul style={{ margin: 0, paddingLeft: "1rem" }}>
+                    <ul>
                       {auditLogs.map((log) => (
                         <li key={log.id}>
-                          <strong>{log.user || "unknown"}</strong> — {log.action} ({new Date(log.timestamp).toLocaleString()})
+                          <strong>{log.user || "unknown"}</strong> —{" "}
+                          {log.action} (
+                          {new Date(log.timestamp).toLocaleString()})
                         </li>
                       ))}
                     </ul>

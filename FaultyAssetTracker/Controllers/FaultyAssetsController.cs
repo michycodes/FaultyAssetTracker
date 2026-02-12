@@ -182,6 +182,39 @@ namespace FaultyAssetTracker.Controllers
 
             return Ok(logs);
         }
+        // PUT: api/FaultyAssets/{assetTag}
+        [HttpPut("{assetTag}")]
+        public async Task<IActionResult> Update(string assetTag, FaultyAsset updatedAsset)
+        {
+            var existingAsset = await _context.FaultyAssets
+                .FirstOrDefaultAsync(a => a.AssetTag == assetTag);
+
+            if (existingAsset == null)
+                return NotFound("asset not found.");
+
+            var allowedStatuses = new[] { "Pending", "In Repair", "Repaired" };
+
+            if (updatedAsset.RepairCost < 0)
+                return BadRequest("repair cost cannot be negative.");
+
+            if (!allowedStatuses.Contains(updatedAsset.Status))
+                return BadRequest("status must be: Pending, In Repair, or Repaired.");
+
+            // update only what is allowed
+            existingAsset.Status = updatedAsset.Status;
+            existingAsset.RepairCost = updatedAsset.RepairCost;
+            existingAsset.Vendor = updatedAsset.Vendor;
+            existingAsset.Branch = updatedAsset.Branch;
+            existingAsset.FaultReported = updatedAsset.FaultReported;
+
+            await _context.SaveChangesAsync();
+
+            var user = User.Identity?.Name ?? "system";
+            await LogAudit(existingAsset.Id, $"updated asset {existingAsset.AssetTag}");
+
+            return NoContent();
+        }
+
 
 
 
