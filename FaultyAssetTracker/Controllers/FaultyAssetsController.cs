@@ -30,13 +30,23 @@ namespace FaultyAssetTracker.Controllers
                     Vendor = a.Vendor,
                     Branch = a.Branch,
                     Status = a.Status,
-                    RepairCost = a.RepairCost
+                    RepairCost = a.RepairCost,
+                    LastModifiedBy = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => log.User)
+                        .FirstOrDefault(),
+                    LastModifiedAt = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => (DateTime?)log.Timestamp)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
         }
 
 
-        // GET: api/FaultyAssets/5 (searches for an asset with id)
+        // GET: api/FaultyAssets/ASSET-001 (searches for an asset by tag)
         [HttpGet("{assetTag}")]
         public async Task<ActionResult<FaultyAssetDto>> GetByAssetTag(string assetTag)
         {
@@ -49,7 +59,17 @@ namespace FaultyAssetTracker.Controllers
                     Vendor = a.Vendor,
                     Branch = a.Branch,
                     Status = a.Status,
-                    RepairCost = a.RepairCost
+                    RepairCost = a.RepairCost,
+                    LastModifiedBy = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => log.User)
+                        .FirstOrDefault(),
+                    LastModifiedAt = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => (DateTime?)log.Timestamp)
+                        .FirstOrDefault()
                 })
                 .FirstOrDefaultAsync();
 
@@ -80,18 +100,14 @@ namespace FaultyAssetTracker.Controllers
 
             _context.FaultyAssets.Add(asset);
             await _context.SaveChangesAsync();
-            var user = User.Identity?.Name ?? "system";
-            await LogAudit(asset.Id, user, $"created asset {asset.SerialNo}");
+            await LogAudit(asset.Id, $"created asset {asset.SerialNo}");
 
-
-            // await LogAudit(asset.Id, $"created asset {asset.AssetName}");
-
-            return CreatedAtAction(nameof(GetByAssetTag), new { assetTag = asset.AssetTag}, asset);
+            return CreatedAtAction(nameof(GetByAssetTag), new { assetTag = asset.AssetTag }, asset);
         }
 
-        
 
-        // GET: api/FaultyAssets/stats(shows status of th asset)
+
+        // GET: api/FaultyAssets/stats (shows status counts)
         [HttpGet("stats")]
         public async Task<ActionResult> GetStats()
         {
@@ -111,10 +127,9 @@ namespace FaultyAssetTracker.Controllers
             });
         }
 
-        // GET: api/FaultyAssets/search?AssetTag
+        // GET: api/FaultyAssets/search?AssetTag=ASSET-001
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<FaultyAssetDto>>> Search(
-    [FromQuery] string AssetTag)
+        public async Task<ActionResult<IEnumerable<FaultyAssetDto>>> Search([FromQuery] string AssetTag)
         {
             return await _context.FaultyAssets
                 .Where(a => a.AssetTag == AssetTag)
@@ -125,14 +140,53 @@ namespace FaultyAssetTracker.Controllers
                     Vendor = a.Vendor,
                     Branch = a.Branch,
                     Status = a.Status,
-                    RepairCost = a.RepairCost
+                    RepairCost = a.RepairCost,
+                    LastModifiedBy = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => log.User)
+                        .FirstOrDefault(),
+                    LastModifiedAt = _context.AuditLogs
+                        .Where(log => log.AssetId == a.Id)
+                        .OrderByDescending(log => log.Timestamp)
+                        .Select(log => (DateTime?)log.Timestamp)
+                        .FirstOrDefault()
                 })
                 .ToListAsync();
         }
 
+        // GET: api/FaultyAssets/{assetTag}/audit (asset-specific audit trail)
+        [HttpGet("{assetTag}/audit")]
+        public async Task<ActionResult<IEnumerable<object>>> GetAuditTrailByAssetTag(string assetTag)
+        {
+            var assetId = await _context.FaultyAssets
+                .Where(a => a.AssetTag == assetTag)
+                .Select(a => (int?)a.Id)
+                .FirstOrDefaultAsync();
 
-        // AUDIT LOGGER(shows the person who last made changes to a file)
-        private async Task LogAudit(int assetId, string message, string v)
+            if (assetId == null)
+                return NotFound("asset not found.");
+
+            var logs = await _context.AuditLogs
+                .Where(l => l.AssetId == assetId.Value)
+                .OrderByDescending(l => l.Timestamp)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.AssetId,
+                    l.Action,
+                    l.User,
+                    l.Timestamp
+                })
+                .ToListAsync();
+
+            return Ok(logs);
+        }
+
+
+
+        // AUDIT LOGGER (tracks who made changes)
+        private async Task LogAudit(int assetId, string action)
         {
             var username = User.Identity?.Name ?? "unknown";
 
@@ -140,7 +194,7 @@ namespace FaultyAssetTracker.Controllers
             {
                 AssetId = assetId,
                 User = username,
-                Action = message,
+                Action = action,
                 Timestamp = DateTime.UtcNow
             };
 

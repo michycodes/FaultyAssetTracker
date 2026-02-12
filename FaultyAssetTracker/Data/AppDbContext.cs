@@ -22,6 +22,10 @@ namespace FaultyAssetTracker.Data
             modelBuilder.Entity<FaultyAsset>()
                 .Property(f => f.RepairCost)
                 .HasPrecision(18, 2);
+            modelBuilder.Entity<FaultyAsset>()
+                .HasIndex(a => a.AssetTag)
+                .IsUnique();
+
         }
     }
 }

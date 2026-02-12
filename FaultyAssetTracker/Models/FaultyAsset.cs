@@ -7,7 +7,7 @@
         public string AssetName { get; set; } = string.Empty;
         public string TicketId { get; set; }
         public string SerialNo { get; set; }
-        public string AssetTag { get; set; }
+        public string AssetTag { get; set; } = null!;
         public string Branch { get; set; }
         public DateTime DateReceived { get; set; }
         public string ReceivedBy { get; set; }

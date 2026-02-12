@@ -4,6 +4,7 @@ import "./App.css";
 import AssetList from "./components/AssetList";
 import AssetStats from "./components/AssetStats";
 import CreateAsset from "./components/CreateAsset";
+import ProfilePage from "./components/ProfilePage";
 import {
   getDisplayUser,
   getUserRoles,
@@ -12,7 +13,7 @@ import {
   logout,
 } from "./services/auth";
 
-type View = "stats" | "assets";
+type View = "stats" | "assets" | "profile";
 
 function App() {
   const [email, setEmail] = useState("");
@@ -95,6 +96,12 @@ function App() {
         >
           View Assets
         </button>
+        <button
+          className={activeView === "profile" ? "nav-btn active" : "nav-btn"}
+          onClick={() => setActiveView("profile")}
+        >
+          Profile
+        </button>
       </aside>
 
       <section className="content-area">
@@ -123,6 +130,7 @@ function App() {
 
         {!showCreateAsset && activeView === "stats" && <AssetStats refreshKey={refreshKey} />}
         {!showCreateAsset && activeView === "assets" && <AssetList refreshKey={refreshKey} />}
+        {!showCreateAsset && activeView === "profile" && <ProfilePage />}
       </section>
     </main>
   );
