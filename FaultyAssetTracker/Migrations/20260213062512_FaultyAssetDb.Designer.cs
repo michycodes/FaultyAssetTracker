@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FaultyAssetTracker.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260126071450_AddIdentity")]
-    partial class AddIdentity
+    [Migration("20260213062512_FaultyAssetDb")]
+    partial class FaultyAssetDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -65,7 +65,7 @@ namespace FaultyAssetTracker.Migrations
 
                     b.Property<string>("AssetTag")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Branch")
                         .IsRequired()
@@ -110,6 +110,9 @@ namespace FaultyAssetTracker.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssetTag")
+                        .IsUnique();
 
                     b.ToTable("FaultyAssets");
                 });

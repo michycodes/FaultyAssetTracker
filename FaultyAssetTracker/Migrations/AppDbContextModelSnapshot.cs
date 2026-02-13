@@ -62,7 +62,7 @@ namespace FaultyAssetTracker.Migrations
 
                     b.Property<string>("AssetTag")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Branch")
                         .IsRequired()
@@ -107,6 +107,9 @@ namespace FaultyAssetTracker.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AssetTag")
+                        .IsUnique();
 
                     b.ToTable("FaultyAssets");
                 });
