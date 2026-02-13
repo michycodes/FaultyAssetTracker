@@ -29,6 +29,7 @@ namespace FaultyAssetTracker.Controllers
                     SerialNo = a.SerialNo,
                     Vendor = a.Vendor,
                     Branch = a.Branch,
+                    FaultReported = a.FaultReported,
                     Status = a.Status,
                     RepairCost = a.RepairCost,
                     LastModifiedBy = _context.AuditLogs
@@ -58,6 +59,7 @@ namespace FaultyAssetTracker.Controllers
                     SerialNo = a.SerialNo,
                     Vendor = a.Vendor,
                     Branch = a.Branch,
+                    FaultReported = a.FaultReported,
                     Status = a.Status,
                     RepairCost = a.RepairCost,
                     LastModifiedBy = _context.AuditLogs
@@ -139,6 +141,7 @@ namespace FaultyAssetTracker.Controllers
                     SerialNo = a.SerialNo,
                     Vendor = a.Vendor,
                     Branch = a.Branch,
+                    FaultReported = a.FaultReported,
                     Status = a.Status,
                     RepairCost = a.RepairCost,
                     LastModifiedBy = _context.AuditLogs
@@ -184,7 +187,7 @@ namespace FaultyAssetTracker.Controllers
         }
         // PUT: api/FaultyAssets/{assetTag}
         [HttpPut("{assetTag}")]
-        public async Task<IActionResult> Update(string assetTag, FaultyAsset updatedAsset)
+        public async Task<IActionResult> Update(string assetTag, UpdateFaultyAssetDto updatedAsset)
         {
             var existingAsset = await _context.FaultyAssets
                 .FirstOrDefaultAsync(a => a.AssetTag == assetTag);
@@ -203,9 +206,9 @@ namespace FaultyAssetTracker.Controllers
             // update only what is allowed
             existingAsset.Status = updatedAsset.Status;
             existingAsset.RepairCost = updatedAsset.RepairCost;
-            existingAsset.Vendor = updatedAsset.Vendor;
-            existingAsset.Branch = updatedAsset.Branch;
-            existingAsset.FaultReported = updatedAsset.FaultReported;
+            existingAsset.Vendor = string.IsNullOrWhiteSpace(updatedAsset.Vendor) ? existingAsset.Vendor : updatedAsset.Vendor;
+            existingAsset.Branch = string.IsNullOrWhiteSpace(updatedAsset.Branch) ? existingAsset.Branch : updatedAsset.Branch;
+            existingAsset.FaultReported = string.IsNullOrWhiteSpace(updatedAsset.FaultReported) ? existingAsset.FaultReported : updatedAsset.FaultReported;
 
             await _context.SaveChangesAsync();
 
@@ -235,4 +238,4 @@ namespace FaultyAssetTracker.Controllers
             await _context.SaveChangesAsync();
         }
     }
-}
+}   
