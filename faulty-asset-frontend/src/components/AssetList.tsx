@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import api from "../services/api";
+import { useState, useEffect, useMemo } from 'react';
+import api from '../services/api';
+import { toast } from 'react-toastify';
 
 type AssetListItem = {
   assetTag: string;
@@ -7,82 +8,52 @@ type AssetListItem = {
   vendor: string;
   branch: string;
   faultReported: string;
-  status: "Pending" | "In Repair" | "Repaired";
+  status: 'Pending' | 'In Repair' | 'Repaired';
   repairCost: number | null;
-  lastModifiedBy?: string | null;
-  lastModifiedAt?: string | null;
 };
 
 type AuditLogItem = {
   id: number;
-  assetId: number;
   action: string;
   user: string | null;
   timestamp: string;
 };
 
-type AssetListProps = {
-  refreshKey: number;
-};
-
-type SortBy = "repaired" | "inRepair" | "pending";
-
-type AssetEditForm = {
-  vendor: string;
-  branch: string;
-  faultReported: string;
-  status: "Pending" | "In Repair" | "Repaired";
-  repairCost: string;
-};
+type AssetListProps = { refreshKey: number };
+type SortBy = 'repaired' | 'inRepair' | 'pending';
 
 const statusSortOrders: Record<SortBy, string[]> = {
-  repaired: ["Repaired", "In Repair", "Pending"],
-  inRepair: ["In Repair", "Pending", "Repaired"],
-  pending: ["Pending", "In Repair", "Repaired"],
+  repaired: ['Repaired', 'In Repair', 'Pending'],
+  inRepair: ['In Repair', 'Pending', 'Repaired'],
+  pending: ['Pending', 'In Repair', 'Repaired'],
 };
 
-function toEditForm(asset: AssetListItem): AssetEditForm {
-  return {
-    vendor: asset.vendor,
-    branch: asset.branch,
-    faultReported: asset.faultReported,
-    status: asset.status,
-    repairCost: asset.repairCost === null ? "" : String(asset.repairCost),
-  };
-}
-
+// --- Component ---
 function AssetList({ refreshKey }: AssetListProps) {
   const [assets, setAssets] = useState<AssetListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("pending");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<SortBy>('pending');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [openAuditFor, setOpenAuditFor] = useState<string>("");
+  // Audit State
+  const [openAuditFor, setOpenAuditFor] = useState('');
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  const [editingAssetTag, setEditingAssetTag] = useState<string>("");
-  const [editForm, setEditForm] = useState<AssetEditForm | null>(null);
+  // Edit State
+  const [editingAssetTag, setEditingAssetTag] = useState('');
+  const [editForm, setEditForm] = useState<any>(null);
   const [editLoading, setEditLoading] = useState(false);
-  const [saveError, setSaveError] = useState("");
 
   const fetchAssets = async (showLoader = true) => {
-    if (showLoader) {
-      setLoading(true);
-    }
-
-    setError("");
-
+    if (showLoader) setLoading(true);
     try {
-      const response = await api.get<AssetListItem[]>("/FaultyAssets");
+      const response = await api.get<AssetListItem[]>('/FaultyAssets');
       setAssets(response.data);
     } catch {
-      setError("Could not load assets.");
+      toast.error('Could not load assets.');
     } finally {
-      if (showLoader) {
-        setLoading(false);
-      }
+      if (showLoader) setLoading(false);
     }
   };
 
@@ -90,324 +61,233 @@ function AssetList({ refreshKey }: AssetListProps) {
     void fetchAssets();
   }, [refreshKey]);
 
-  const filteredAndSortedAssets = useMemo(() => {
-    const list = [...assets];
-
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const filtered = normalizedSearch
-      ? list.filter((asset) =>
-          asset.assetTag.toLowerCase().includes(normalizedSearch),
-        )
-      : list;
-
-    const sortOrder = statusSortOrders[sortBy].map((s) => s.toLowerCase());
-
-    filtered.sort((a, b) => {
-      const aIndex = sortOrder.indexOf(a.status.toLowerCase());
-      const bIndex = sortOrder.indexOf(b.status.toLowerCase());
-
-      if (aIndex !== bIndex) {
-        return (
-          (aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex) -
-          (bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex)
-        );
-      }
-
-      return a.assetTag.localeCompare(b.assetTag);
-    });
-
-    return filtered;
+  // Search & Sort Logic
+  const filteredAssets = useMemo(() => {
+    const list = assets.filter((a) =>
+      a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
+    const order = statusSortOrders[sortBy].map((s) => s.toLowerCase());
+    return list.sort(
+      (a, b) =>
+        order.indexOf(a.status.toLowerCase()) -
+        order.indexOf(b.status.toLowerCase()),
+    );
   }, [assets, searchTerm, sortBy]);
 
-  const handleAuditToggle = async (assetTag: string) => {
-    if (openAuditFor === assetTag) {
-      setOpenAuditFor("");
-      setAuditLogs([]);
-      return;
-    }
-
-    setOpenAuditFor(assetTag);
+  const handleAuditToggle = async (tag: string) => {
+    if (openAuditFor === tag) return setOpenAuditFor('');
+    setOpenAuditFor(tag);
     setAuditLoading(true);
-
     try {
-      const response = await api.get<AuditLogItem[]>(
-        `/FaultyAssets/${encodeURIComponent(assetTag)}/audit`,
+      const res = await api.get(
+        `/FaultyAssets/${encodeURIComponent(tag)}/audit`,
       );
-      setAuditLogs(response.data);
+      setAuditLogs(res.data);
     } catch {
-      setAuditLogs([]);
+      toast.error('Failed to load audit logs.');
     } finally {
       setAuditLoading(false);
     }
   };
 
-  const startEdit = (asset: AssetListItem) => {
-    setSaveError("");
-    setEditingAssetTag(asset.assetTag);
-    setEditForm(toEditForm(asset));
-  };
-
-  const cancelEdit = () => {
-    setEditingAssetTag("");
-    setEditForm(null);
-    setEditLoading(false);
-    setSaveError("");
-  };
-
-  const handleEditChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    if (!editForm) return;
-
-    setEditForm({
-      ...editForm,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSaveEdit = async (assetTag: string) => {
-    if (!editForm) return;
-
-    const repairCostValue = editForm.repairCost.trim();
-    const repairCostNumber =
-      repairCostValue === "" ? null : Number(repairCostValue);
-
-    if (repairCostNumber !== null && Number.isNaN(repairCostNumber)) {
-      setSaveError("Repair cost must be a valid number.");
-      return;
-    }
-
+  const handleSaveEdit = async (tag: string) => {
+    setEditLoading(true);
     try {
-      setSaveError("");
-      setEditLoading(true);
-
-      await api.put(`/FaultyAssets/${encodeURIComponent(assetTag)}`, {
-        vendor: editForm.vendor,
-        branch: editForm.branch,
-        faultReported: editForm.faultReported,
-        status: editForm.status,
-        repairCost: repairCostNumber,
+      await api.put(`/FaultyAssets/${encodeURIComponent(tag)}`, {
+        ...editForm,
+        repairCost:
+          editForm.repairCost === '' ? null : Number(editForm.repairCost),
       });
-
-      cancelEdit();
+      toast.success('Asset updated!');
+      setEditingAssetTag('');
       await fetchAssets(false);
     } catch {
-      setSaveError("Could not update this asset.");
+      toast.error('Update failed.');
     } finally {
       setEditLoading(false);
     }
   };
 
-  if (loading) return <p>loading assets...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (loading)
+    return (
+      <div className="text-center py-20 animate-pulse text-gray-500">
+        Loading assets...
+      </div>
+    );
 
   return (
-    <section style={{ marginTop: "1.5rem" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.75rem",
-          gap: "1rem",
-          flexWrap: "wrap",
-        }}>
-        <h2 style={{ margin: 0 }}>assets</h2>
+    <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Search & Filter Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <h2 className="text-2xl font-bold text-white">Assets Inventory</h2>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <label>
-            search tag
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
             <input
               type="text"
-              placeholder="search by asset tag"
+              placeholder="Search Tag..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none w-64 transition-all"
             />
-          </label>
-
-          <label>
-            sort by status
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}>
-              <option value="repaired">repaired</option>
-              <option value="inRepair">in repair</option>
-              <option value="pending">pending</option>
-            </select>
-          </label>
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+          >
+            <option value="pending">Sort by Pending</option>
+            <option value="inRepair">Sort by In Repair</option>
+            <option value="repaired">Sort by Repaired</option>
+          </select>
         </div>
       </div>
 
-      {filteredAndSortedAssets.length === 0 ? (
-        <p>no assets found yet.</p>
+      {filteredAssets.length === 0 ? (
+        <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-2xl">
+          <p className="text-gray-500">
+            No assets found matching your criteria.
+          </p>
+        </div>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 12,
-          }}>
-          {filteredAndSortedAssets.map((asset) => {
-            const isEditing =
-              editingAssetTag === asset.assetTag && editForm !== null;
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredAssets.map((asset) => {
+            const isEditing = editingAssetTag === asset.assetTag;
 
             return (
               <article
-                key={`${asset.assetTag}-${asset.serialNo}`}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 16,
-                  padding: "0.9rem",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
-                }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}>
-                  <strong>{asset.assetTag}</strong>
-
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    {asset.status === "Pending" && (
-                      <button
-                        type="button"
-                        aria-label={`Edit ${asset.assetTag}`}
-                        title="Edit pending asset"
-                        disabled={editLoading}
-                        onClick={() => startEdit(asset)}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          fontSize: 18,
-                          padding: 0,
-                        }}>
-                        ✏️
-                      </button>
-                    )}
-
-                    <span
-                      style={{
-                        padding: "0.2rem 0.55rem",
-                        borderRadius: 999,
-                        background: "#e0e7ff",
-                        fontSize: 12,
-                      }}>
-                      {asset.status}
-                    </span>
+                key={asset.assetTag}
+                className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all group flex flex-col"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-white group-hover:text-green-500 transition-colors">
+                      {asset.assetTag}
+                    </h3>
+                    <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">
+                      {asset.serialNo}
+                    </p>
                   </div>
+                  <StatusBadge status={asset.status} />
                 </div>
 
-                {isEditing && editForm ? (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      display: "grid",
-                      gridTemplateColumns: "1fr",
-                      gap: 6,
-                    }}>
-                    <input
+                {isEditing ? (
+                  <div className="space-y-3 flex-1">
+                    <EditInput
                       name="vendor"
                       value={editForm.vendor}
-                      onChange={handleEditChange}
-                      placeholder="vendor"
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, vendor: e.target.value })
+                      }
+                      label="Vendor"
                     />
-                    <input
+                    <EditInput
                       name="branch"
                       value={editForm.branch}
-                      onChange={handleEditChange}
-                      placeholder="branch"
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, branch: e.target.value })
+                      }
+                      label="Branch"
                     />
-                    <input
+                    <EditInput
                       name="repairCost"
                       type="number"
-                      min={0}
                       value={editForm.repairCost}
-                      onChange={handleEditChange}
-                      placeholder="repair cost"
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, repairCost: e.target.value })
+                      }
+                      label="Cost"
                     />
-                    <select
-                      name="status"
-                      value={editForm.status}
-                      onChange={handleEditChange}>
-                      <option value="Pending">Pending</option>
-                      <option value="In Repair">In Repair</option>
-                      <option value="Repaired">Repaired</option>
-                    </select>
-                    <textarea
-                      name="faultReported"
-                      value={editForm.faultReported}
-                      onChange={handleEditChange}
-                      placeholder="fault reported"
-                    />
-
-                    {saveError && (
-                      <p style={{ color: "red", margin: 0 }}>{saveError}</p>
-                    )}
-
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="flex gap-2 pt-2">
                       <button
-                        type="button"
-                        disabled={editLoading}
-                        onClick={() => void handleSaveEdit(asset.assetTag)}>
-                        {editLoading ? "saving..." : "save"}
+                        onClick={() => handleSaveEdit(asset.assetTag)}
+                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-500"
+                      >
+                        {editLoading ? '...' : 'Save'}
                       </button>
                       <button
-                        type="button"
-                        disabled={editLoading}
-                        onClick={cancelEdit}>
-                        cancel
+                        onClick={() => setEditingAssetTag('')}
+                        className="flex-1 bg-gray-800 text-gray-400 text-xs font-bold py-2 rounded-lg hover:bg-gray-700"
+                      >
+                        Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <p>
-                      <strong>serial:</strong> {asset.serialNo}
-                    </p>
-                    <p>
-                      <strong>vendor:</strong> {asset.vendor}
-                    </p>
-                    <p>
-                      <strong>branch:</strong> {asset.branch}
-                    </p>
-                    <p>
-                      <strong>repair cost:</strong> {asset.repairCost ?? "n/a"}
-                    </p>
-                    <p>
-                      <strong>fault reported:</strong>{" "}
-                      {asset.faultReported || "n/a"}
-                    </p>
-                  </>
+                  <div className="flex-1 space-y-2 text-sm text-gray-300">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Vendor:</span>{' '}
+                      <span>{asset.vendor}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Branch:</span>{' '}
+                      <span>{asset.branch}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Repair Cost:</span>{' '}
+                      <span className="text-green-500 font-mono">
+                        ₦{asset.repairCost?.toLocaleString() ?? '0'}
+                      </span>
+                    </div>
+                    <div className="mt-4 p-3 bg-black/20 rounded-lg border border-gray-800/50">
+                      <p className="text-xs text-gray-500 leading-relaxed italic line-clamp-2">
+                        "{asset.faultReported || 'No description provided'}"
+                      </p>
+                    </div>
+                  </div>
                 )}
 
-                <button
-                  style={{ marginTop: 8 }}
-                  onClick={() => handleAuditToggle(asset.assetTag)}>
-                  {openAuditFor === asset.assetTag
-                    ? "hide audit"
-                    : "view audit"}
-                </button>
+                <div className="mt-6 flex items-center gap-2">
+                  <button
+                    onClick={() => handleAuditToggle(asset.assetTag)}
+                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors py-2 border border-gray-800 rounded-lg hover:bg-gray-800"
+                  >
+                    {openAuditFor === asset.assetTag
+                      ? 'Hide History'
+                      : 'View History'}
+                  </button>
+                  {!isEditing && asset.status === 'Pending' && (
+                    <button
+                      onClick={() => {
+                        setEditingAssetTag(asset.assetTag);
+                        setEditForm({
+                          ...asset,
+                          repairCost: asset.repairCost || '',
+                        });
+                      }}
+                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-gray-800 rounded-lg hover:bg-gray-800 transition-all"
+                    >
+                      ✏️
+                    </button>
+                  )}
+                </div>
 
+                {/* Audit Trail Dropdown */}
                 {openAuditFor === asset.assetTag && (
-                  <div style={{ marginTop: "0.75rem" }}>
-                    <h4>audit trail</h4>
+                  <div className="mt-4 p-4 bg-black/40 rounded-xl border border-gray-800/50 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                    <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+                      Audit Trail
+                    </h4>
                     {auditLoading ? (
-                      <p>loading audit...</p>
+                      <div className="text-[10px] text-gray-700 animate-pulse">
+                        Loading logs...
+                      </div>
                     ) : auditLogs.length === 0 ? (
-                      <p>no audit logs found.</p>
+                      <p className="text-[10px] text-gray-700">No logs.</p>
                     ) : (
-                      <ul>
+                      <ul className="space-y-3 border-l border-gray-800 pl-4 ml-1">
                         {auditLogs.map((log) => (
-                          <li key={log.id}>
-                            <strong>{log.user || "unknown"}</strong> —{" "}
-                            {log.action} (
-                            {new Date(log.timestamp).toLocaleString()})
+                          <li key={log.id} className="relative">
+                            <span className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-gray-800 border border-gray-700" />
+                            <p className="text-[11px] text-gray-200">
+                              <span className="font-bold text-green-500">
+                                {log.user || 'System'}
+                              </span>{' '}
+                              {log.action}
+                            </p>
+                            <p className="text-[9px] text-gray-600">
+                              {new Date(log.timestamp).toLocaleDateString()}
+                            </p>
                           </li>
                         ))}
                       </ul>
@@ -422,5 +302,33 @@ function AssetList({ refreshKey }: AssetListProps) {
     </section>
   );
 }
+
+// --- Internal Sub-components ---
+const StatusBadge = ({ status }: { status: string }) => {
+  const themes: any = {
+    Pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+    'In Repair': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    Repaired: 'bg-green-500/10 text-green-500 border-green-500/20',
+  };
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider ${themes[status]}`}
+    >
+      {status}
+    </span>
+  );
+};
+
+const EditInput = ({ label, ...props }: any) => (
+  <div className="space-y-1">
+    <label className="text-[9px] uppercase font-bold text-gray-600 ml-1">
+      {label}
+    </label>
+    <input
+      {...props}
+      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-secondary transition-all"
+    />
+  </div>
+);
 
 export default AssetList;

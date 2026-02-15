@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
+import { useEffect, useState } from 'react';
+import api from '../services/api';
+import StatCard from './StatCard';
 
 type StatsResponse = {
   totalAssets: number;
@@ -22,7 +23,7 @@ function AssetStats({ refreshKey }: AssetStatsProps) {
       setLoading(true);
 
       try {
-        const response = await api.get<StatsResponse>("/FaultyAssets/stats");
+        const response = await api.get<StatsResponse>('/FaultyAssets/stats');
         setStats(response.data);
       } catch {
         setStats(null);
@@ -35,17 +36,21 @@ function AssetStats({ refreshKey }: AssetStatsProps) {
   }, [refreshKey]);
 
   if (loading) return <p>Loading stats...</p>;
-  if (!stats) return <p style={{ color: "red" }}>Could not load stats.</p>;
+  if (!stats) return <p style={{ color: 'red' }}>Could not load stats.</p>;
 
   return (
-    <section style={{ marginTop: "1rem", marginBottom: "1rem" }}>
-      <h2>Stats</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(120px, 1fr))", gap: 8 }}>
-        <div><strong>Total</strong><div>{stats.totalAssets}</div></div>
-        <div><strong>Pending</strong><div>{stats.pending}</div></div>
-        <div><strong>In Repair</strong><div>{stats.inRepair}</div></div>
-        <div><strong>Repaired</strong><div>{stats.repaired}</div></div>
-        <div><strong>Total Cost</strong><div>{stats.totalRepairCost?.toLocaleString() ?? 0}</div></div>
+    <section className="mb-8">
+      <h2 className="text-2xl font-bold mb-6">System Overview</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard label="Total Assets" value={stats.totalAssets} color="gray" />
+        <StatCard label="Pending" value={stats.pending} color="yellow" />
+        <StatCard label="In Repair" value={stats.inRepair} color="blue" />
+        <StatCard label="Repaired" value={stats.repaired} color="green" />
+        <StatCard
+          label="Total Cost"
+          value={`₦${stats.totalRepairCost?.toLocaleString()}`}
+          color="red"
+        />
       </div>
     </section>
   );

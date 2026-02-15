@@ -1,5 +1,6 @@
-import { useState } from "react";
-import api from "../services/api";
+import { useState } from 'react';
+import api from '../services/api';
+import { toast } from 'react-toastify';
 
 type AssetForm = {
   category: string;
@@ -14,7 +15,7 @@ type AssetForm = {
   faultReported: string;
   vendorPickupDate: string;
   repairCost: string;
-  status: "Pending" | "In Repair" | "Repaired";
+  status: 'Pending' | 'In Repair' | 'Repaired';
 };
 
 type CreateAssetProps = {
@@ -22,23 +23,24 @@ type CreateAssetProps = {
 };
 
 const initialForm: AssetForm = {
-  category: "",
-  assetName: "",
-  ticketId: "",
-  serialNo: "",
-  assetTag: "",
-  branch: "",
-  dateReceived: "",
-  receivedBy: "",
-  vendor: "",
-  faultReported: "",
-  vendorPickupDate: "",
-  repairCost: "",
-  status: "Pending",
+  category: '',
+  assetName: '',
+  ticketId: '',
+  serialNo: '',
+  assetTag: '',
+  branch: '',
+  dateReceived: '',
+  receivedBy: '',
+  vendor: '',
+  faultReported: '',
+  vendorPickupDate: '',
+  repairCost: '',
+  status: 'Pending',
 };
 
 function CreateAsset({ onCreated }: CreateAssetProps) {
   const [form, setForm] = useState<AssetForm>(initialForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -53,164 +55,216 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     try {
-      await api.post("/FaultyAssets", {
-        category: form.category,
-        assetName: form.assetName,
-        ticketId: form.ticketId,
-        serialNo: form.serialNo,
-        assetTag: form.assetTag,
-        branch: form.branch,
-        dateReceived: form.dateReceived,
-        receivedBy: form.receivedBy,
-        vendor: form.vendor,
-        faultReported: form.faultReported,
+      await api.post('/FaultyAssets', {
+        ...form,
         vendorPickupDate: form.vendorPickupDate || null,
-        repairCost: form.repairCost === "" ? null : Number(form.repairCost),
-        status: form.status,
+        repairCost: form.repairCost === '' ? null : Number(form.repairCost),
       });
 
-      alert("Asset created successfully");
+      toast.success('Asset tracked successfully!');
       setForm(initialForm);
       onCreated?.();
-    } catch (error: unknown) {
-      let message =
-        "Failed to create asset. Make sure you are logged in and your user has Admin or Employee role.";
-
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof error.response === "object" &&
-        error.response !== null &&
-        "data" in error.response
-      ) {
-        const responseData = error.response.data;
-
-        if (typeof responseData === "string") {
-          message = responseData;
-        } else if (
-          typeof responseData === "object" &&
-          responseData !== null &&
-          "title" in responseData &&
-          typeof responseData.title === "string"
-        ) {
-          message = responseData.title;
-        }
-      }
-
-      alert(message);
+    } catch (error: any) {
+      const message =
+        error.response?.data?.title ||
+        error.response?.data ||
+        'Failed to create asset.';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto" }}>
-      <h2>Create Faulty Asset</h2>
+    <div className="max-w-4xl mx-auto bg-background border border-gray-800 p-8 rounded-2xl shadow-xl backdrop-blur-sm min-h-screen">
+      <div className="mb-8 flex flex-col gap-2">
+        <h2 className="text-2xl font-bold text-white">
+          Track New Faulty Asset
+        </h2>
+        <p className="text-gray-400 text-sm">
+          Fill in the details below to log a new entry.
+        </p>
+      </div>
 
       <form
         onSubmit={handleSubmit}
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full"
       >
-        <input
-          name="category"
-          placeholder="category"
-          value={form.category}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="assetName"
-          placeholder="asset name"
-          value={form.assetName}
-          onChange={handleChange}
-          required
-        />
+        {/* Row 1 */}
+        <div className="relative h-14">
+          <input
+            name="category"
+            value={form.category}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Category</label>
+        </div>
+        <div className="relative h-14">
+          <input
+            name="assetName"
+            value={form.assetName}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Asset Name</label>
+        </div>
 
-        <input
-          name="ticketId"
-          placeholder="ticket id"
-          value={form.ticketId}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="serialNo"
-          placeholder="serial number"
-          value={form.serialNo}
-          onChange={handleChange}
-          required
-        />
+        {/* Row 2 */}
+        <div className="relative h-14">
+          <input
+            name="ticketId"
+            value={form.ticketId}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Ticket ID</label>
+        </div>
+        <div className="relative h-14">
+          <input
+            name="serialNo"
+            value={form.serialNo}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Serial Number</label>
+        </div>
 
-        <input
-          name="assetTag"
-          placeholder="asset tag"
-          value={form.assetTag}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="branch"
-          placeholder="branch"
-          value={form.branch}
-          onChange={handleChange}
-          required
-        />
+        {/* Row 3 */}
+        <div className="relative h-14">
+          <input
+            name="assetTag"
+            value={form.assetTag}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Asset Tag</label>
+        </div>
+        <div className="relative h-14">
+          <input
+            name="branch"
+            value={form.branch}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Branch</label>
+        </div>
 
-        <input
-          type="date"
-          name="dateReceived"
-          value={form.dateReceived}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="receivedBy"
-          placeholder="received by"
-          value={form.receivedBy}
-          onChange={handleChange}
-          required
-        />
+        {/* Row 4 - Dates */}
+        <div className="relative h-14">
+          <input
+            type="date"
+            name="dateReceived"
+            value={form.dateReceived}
+            onChange={handleChange}
+            className="peer input-field pt-4"
+            required
+          />
+          <label className="floating-label">Date Received</label>
+        </div>
+        <div className="relative h-14">
+          <input
+            name="receivedBy"
+            value={form.receivedBy}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Received By</label>
+        </div>
 
-        <input
-          name="vendor"
-          placeholder="vendor"
-          value={form.vendor}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="date"
-          name="vendorPickupDate"
-          value={form.vendorPickupDate}
-          onChange={handleChange}
-        />
+        {/* Row 5 */}
+        <div className="relative h-14">
+          <input
+            name="vendor"
+            value={form.vendor}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            required
+          />
+          <label className="floating-label">Vendor</label>
+        </div>
+        <div className="relative h-14">
+          <input
+            type="date"
+            name="vendorPickupDate"
+            value={form.vendorPickupDate}
+            onChange={handleChange}
+            className="peer input-field pt-4"
+          />
+          <label className="floating-label">Vendor Pickup Date</label>
+        </div>
 
-        <input
-          type="number"
-          name="repairCost"
-          placeholder="repair cost"
-          value={form.repairCost}
-          onChange={handleChange}
-          min={0}
-        />
-        <select name="status" value={form.status} onChange={handleChange}>
-          <option value="Pending">Pending</option>
-          <option value="In Repair">In Repair</option>
-          <option value="Repaired">Repaired</option>
-        </select>
+        {/* Row 6 */}
+        <div className="relative h-14">
+          <input
+            type="number"
+            name="repairCost"
+            value={form.repairCost}
+            onChange={handleChange}
+            className="peer input-field"
+            placeholder=" "
+            min={0}
+          />
+          <label className="floating-label">Repair Cost (Optional)</label>
+        </div>
+        <div className="relative h-14">
+          <select
+            name="status"
+            value={form.status}
+            onChange={handleChange}
+            className="peer input-field appearance-none cursor-pointer"
+          >
+            <option value="Pending">Pending</option>
+            <option value="In Repair">In Repair</option>
+            <option value="Repaired">Repaired</option>
+          </select>
+          <label className="floating-label">Status</label>
+        </div>
 
-        <textarea
-          name="faultReported"
-          placeholder="fault reported"
-          value={form.faultReported}
-          onChange={handleChange}
-          required
-          style={{ gridColumn: "1 / -1" }}
-        />
+        {/* Textarea */}
+        <div className="relative md:col-span-2 h-40">
+          <textarea
+            name="faultReported"
+            value={form.faultReported}
+            onChange={handleChange}
+            placeholder=" "
+            required
+            className="peer  min-h-30 input-field  py-4 resize-none"
+          />
+          <label
+            className="absolute left-3  -translate-y-1/2 px-1 text-gray-400 transition-all duration-200
+                 pointer-events-none bg-background
+                 peer-focus:top-0 peer-focus:text-xs peer-focus:text-secondary
+                 peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs"
+          >
+            Fault Reported
+          </label>
+        </div>
 
-        <button type="submit" style={{ gridColumn: "1 / -1" }}>
-          Create Asset
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="md:col-span-2 bg-primary disabled:bg-gray-700   py-4  transition-all active:scale-[0.98] cursor-pointer text-background/80 hover:bg-background/50 hover:border-primary  duration-300 font-semibold hover:text-secondary px-4 rounded-lg border border-transparent"
+        >
+          {isSubmitting ? 'Processing...' : 'Create Asset Entry'}
         </button>
       </form>
     </div>
