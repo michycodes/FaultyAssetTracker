@@ -41,7 +41,7 @@ function AssetStats({ refreshKey }: AssetStatsProps) {
   return (
     <section className="mb-8">
       <h2 className="text-2xl font-bold mb-6">System Overview</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
         <StatCard label="Total Assets" value={stats.totalAssets} color="gray" />
         <StatCard label="Pending" value={stats.pending} color="yellow" />
         <StatCard label="In Repair" value={stats.inRepair} color="blue" />
