@@ -3,6 +3,15 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { PencilLine } from 'lucide-react';
 
+// Define the Edit Form interface to eliminate 'any'
+interface AssetEditForm {
+  vendor: string;
+  branch: string;
+  faultReported: string;
+  status: 'Pending' | 'In Repair' | 'Repaired';
+  repairCost: string;
+}
+
 type AssetListItem = {
   category: string;
   assetName: string;
@@ -10,12 +19,12 @@ type AssetListItem = {
   serialNo: string;
   assetTag: string;
   branch: string;
-  dateReceived: string;
+  dateReceived: string; // Stored as string from API
   receivedBy: string;
   vendor: string;
   faultReported: string;
-  vendorPickupDate: string;
-  repairCost: string;
+  vendorPickupDate: string | null; // Stored as string from API
+  repairCost: number | null;
   status: 'Pending' | 'In Repair' | 'Repaired';
 };
 
@@ -35,21 +44,28 @@ const statusSortOrders: Record<SortBy, string[]> = {
   pending: ['Pending', 'In Repair', 'Repaired'],
 };
 
-// --- Component ---
+// Safe date formatter helper
+const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return 'N/A';
+  try {
+    return new Date(dateStr).toLocaleDateString();
+  } catch {
+    return 'Invalid Date';
+  }
+};
+
 function AssetList({ refreshKey }: AssetListProps) {
   const [assets, setAssets] = useState<AssetListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortBy>('pending');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Audit State
   const [openAuditFor, setOpenAuditFor] = useState('');
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  // Edit State
   const [editingAssetTag, setEditingAssetTag] = useState('');
-  const [editForm, setEditForm] = useState<any>(null);
+  const [editForm, setEditForm] = useState<AssetEditForm | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
   const fetchAssets = async (showLoader = true) => {
@@ -68,7 +84,6 @@ function AssetList({ refreshKey }: AssetListProps) {
     void fetchAssets();
   }, [refreshKey]);
 
-  // Search & Sort Logic
   const filteredAssets = useMemo(() => {
     const list = assets.filter((a) =>
       a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -98,6 +113,7 @@ function AssetList({ refreshKey }: AssetListProps) {
   };
 
   const handleSaveEdit = async (tag: string) => {
+    if (!editForm) return;
     setEditLoading(true);
     try {
       await api.put(`/FaultyAssets/${encodeURIComponent(tag)}`, {
@@ -124,24 +140,20 @@ function AssetList({ refreshKey }: AssetListProps) {
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Search & Filter Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <h2 className="text-2xl font-bold text-white">Assets Inventory</h2>
-
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search Tag..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none w-64 transition-all"
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="Search Tag..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none w-full md:w-64 transition-all"
+          />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer w-full md:w-auto"
           >
             <option value="pending">Sort by Pending</option>
             <option value="inRepair">Sort by In Repair</option>
@@ -151,10 +163,8 @@ function AssetList({ refreshKey }: AssetListProps) {
       </div>
 
       {filteredAssets.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-2xl">
-          <p className="text-gray-500">
-            No assets found matching your criteria.
-          </p>
+        <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-2xl text-gray-500">
+          No assets found matching your criteria.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -164,57 +174,54 @@ function AssetList({ refreshKey }: AssetListProps) {
             return (
               <article
                 key={asset.assetTag}
-                className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 hover:border-gray-700 transition-all group flex flex-col"
+                className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 hover:border-gray-700 transition-all flex flex-col"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="space-y-1">
                     <h3 className="text-lg font-bold text-white group-hover:text-green-500 transition-colors">
                       {asset.assetTag}
                     </h3>
-                    <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">
+                    <p className="text-[10px] text-gray-500 font-mono uppercase tracking-widest">
                       {asset.serialNo}
                     </p>
                   </div>
                   <StatusBadge status={asset.status} />
                 </div>
 
-                {isEditing ? (
+                {isEditing && editForm ? (
                   <div className="space-y-3 flex-1">
                     <EditInput
-                      name="vendor"
+                      label="Vendor"
                       value={editForm.vendor}
-                      onChange={(e) =>
+                      onChange={(e: any) =>
                         setEditForm({ ...editForm, vendor: e.target.value })
                       }
-                      label="Vendor"
                     />
                     <EditInput
-                      name="branch"
+                      label="Branch"
                       value={editForm.branch}
-                      onChange={(e) =>
+                      onChange={(e: any) =>
                         setEditForm({ ...editForm, branch: e.target.value })
                       }
-                      label="Branch"
                     />
                     <EditInput
-                      name="repairCost"
+                      label="Cost"
                       type="number"
                       value={editForm.repairCost}
-                      onChange={(e) =>
+                      onChange={(e: any) =>
                         setEditForm({ ...editForm, repairCost: e.target.value })
                       }
-                      label="Cost"
                     />
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => handleSaveEdit(asset.assetTag)}
-                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-green-500"
+                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg"
                       >
                         {editLoading ? '...' : 'Save'}
                       </button>
                       <button
                         onClick={() => setEditingAssetTag('')}
-                        className="flex-1 bg-neutral-800 text-gray-400 text-xs font-bold py-2 rounded-lg hover:bg-neutral-700"
+                        className="flex-1 bg-neutral-800 text-gray-400 text-xs font-bold py-2 rounded-lg"
                       >
                         Cancel
                       </button>
@@ -222,44 +229,27 @@ function AssetList({ refreshKey }: AssetListProps) {
                   </div>
                 ) : (
                   <div className="flex-1 space-y-2 text-sm text-gray-300">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Ticket ID:</span>{' '}
-                      <span>{asset.ticketId}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Vendor:</span>{' '}
-                      <span>{asset.vendor}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Vendor Pickup Date:</span>{' '}
-                      <span>
-                        {asset.vendorPickupDate?.toLocaleString() ?? 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Branch:</span>{' '}
-                      <span>{asset.branch}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Date Received:</span>
-                      <span>
-                        {asset.dateReceived.toLocaleString() ?? 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Received By:</span>{' '}
-                      <span>{asset.receivedBy}</span>
-                    </div>
-
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Repair Cost:</span>{' '}
-                      <span className="text-green-500 font-mono">
+                    <DetailRow label="Ticket ID" value={asset.ticketId} />
+                    <DetailRow label="Vendor" value={asset.vendor} />
+                    <DetailRow
+                      label="Pickup"
+                      value={formatDate(asset.vendorPickupDate)}
+                    />
+                    <DetailRow label="Branch" value={asset.branch} />
+                    <DetailRow
+                      label="Received"
+                      value={formatDate(asset.dateReceived)}
+                    />
+                    <DetailRow label="By" value={asset.receivedBy} />
+                    <div className="flex justify-between font-mono">
+                      <span className="text-gray-500">Cost:</span>
+                      <span className="text-green-500">
                         ₦{asset.repairCost?.toLocaleString() ?? '0'}
                       </span>
                     </div>
                     <div className="mt-4 p-3 bg-black/20 rounded-lg border border-neutral-800/50">
-                      <p className="text-xs text-gray-500 leading-relaxed italic line-clamp-2">
-                        "{asset.faultReported || 'No description provided'}"
+                      <p className="text-xs text-gray-500 italic line-clamp-2">
+                        "{asset.faultReported || 'No description'}"
                       </p>
                     </div>
                   </div>
@@ -268,7 +258,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                 <div className="mt-6 flex items-center gap-2">
                   <button
                     onClick={() => handleAuditToggle(asset.assetTag)}
-                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors py-2 border border-neutral-800 rounded-lg hover:bg-neutral-800"
+                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white py-2 border border-neutral-800 rounded-lg"
                   >
                     {openAuditFor === asset.assetTag
                       ? 'Hide History'
@@ -280,41 +270,35 @@ function AssetList({ refreshKey }: AssetListProps) {
                         setEditingAssetTag(asset.assetTag);
                         setEditForm({
                           ...asset,
-                          repairCost: asset.repairCost || '',
+                          repairCost: asset.repairCost?.toString() || '',
                         });
                       }}
-                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg hover:bg-neutral-800 transition-all"
+                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg"
                     >
                       <PencilLine className="w-4 h-4" />
                     </button>
                   )}
                 </div>
 
-                {/* Audit Trail Dropdown */}
                 {openAuditFor === asset.assetTag && (
                   <div className="mt-4 p-4 bg-black/40 rounded-xl border border-neutral-800/50 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                    <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
-                      Audit Trail
-                    </h4>
                     {auditLoading ? (
                       <div className="text-[10px] text-gray-700 animate-pulse">
-                        Loading logs...
+                        Loading...
                       </div>
-                    ) : auditLogs.length === 0 ? (
-                      <p className="text-[10px] text-gray-700">No logs.</p>
                     ) : (
                       <ul className="space-y-3 border-l border-neutral-800 pl-4 ml-1">
                         {auditLogs.map((log) => (
-                          <li key={log.id} className="relative">
-                            <span className="absolute -left-5.25 top-1 w-2 h-2 rounded-full bg-neutral-800 border border-neutral-700" />
-                            <p className="text-[11px] text-gray-200">
+                          <li key={log.id} className="relative text-[11px]">
+                            <span className="absolute -left-5.25 top-1.5 w-2 h-2 rounded-full bg-neutral-800 border border-neutral-700" />
+                            <p className="text-gray-200">
                               <span className="font-bold text-green-500">
                                 {log.user || 'System'}
                               </span>{' '}
                               {log.action}
                             </p>
                             <p className="text-[9px] text-gray-600">
-                              {new Date(log.timestamp).toLocaleDateString()}
+                              {formatDate(log.timestamp)}
                             </p>
                           </li>
                         ))}
@@ -331,7 +315,14 @@ function AssetList({ refreshKey }: AssetListProps) {
   );
 }
 
-// --- Internal Sub-components ---
+// Internal UI Components
+const DetailRow = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex justify-between">
+    <span className="text-gray-500">{label}:</span>
+    <span className="truncate ml-2">{value}</span>
+  </div>
+);
+
 const StatusBadge = ({ status }: { status: string }) => {
   const themes: any = {
     Pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
@@ -354,7 +345,7 @@ const EditInput = ({ label, ...props }: any) => (
     </label>
     <input
       {...props}
-      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-secondary transition-all"
+      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-green-500 transition-all"
     />
   </div>
 );
