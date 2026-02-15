@@ -59,7 +59,7 @@ function App() {
   //   toast.success('Asset tracked successfully!');
   // };
 
-  if (loggedIn) {
+  if (!loggedIn) {
     return (
       <main className="h-screen flex items-center justify-center">
         <ToastContainer position="top-right" autoClose={3000} theme="dark" />
