@@ -12,11 +12,11 @@ const StatCard = ({
     yellow: 'border-yellow-500/50 text-yellow-500',
     blue: 'border-blue-500/50 text-blue-500',
     green: 'border-green-500/50 text-green-500',
-    red: 'border-red-500/50 text-red-500',
+    red: 'border-orange-500/50 text-orange-500',
   };
   return (
     <div
-      className={`p-6 bg-neutral-900/40 border rounded-2xl ${colors[color]}`}
+      className={`p-6 bg-neutral-900/40 border rounded-2xl ${colors[color]} w-full`}
     >
       <p className="text-xs uppercase tracking-widest opacity-60 font-bold mb-1">
         {label}

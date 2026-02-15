@@ -1,15 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { PencilLine } from 'lucide-react';
 
 type AssetListItem = {
-  assetTag: string;
+  category: string;
+  assetName: string;
+  ticketId: string;
   serialNo: string;
-  vendor: string;
+  assetTag: string;
   branch: string;
+  dateReceived: string;
+  receivedBy: string;
+  vendor: string;
   faultReported: string;
+  vendorPickupDate: string;
+  repairCost: string;
   status: 'Pending' | 'In Repair' | 'Repaired';
-  repairCost: number | null;
 };
 
 type AuditLogItem = {
@@ -157,7 +164,7 @@ function AssetList({ refreshKey }: AssetListProps) {
             return (
               <article
                 key={asset.assetTag}
-                className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all group flex flex-col"
+                className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 hover:border-gray-700 transition-all group flex flex-col"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="space-y-1">
@@ -207,7 +214,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                       </button>
                       <button
                         onClick={() => setEditingAssetTag('')}
-                        className="flex-1 bg-gray-800 text-gray-400 text-xs font-bold py-2 rounded-lg hover:bg-gray-700"
+                        className="flex-1 bg-neutral-800 text-gray-400 text-xs font-bold py-2 rounded-lg hover:bg-neutral-700"
                       >
                         Cancel
                       </button>
@@ -216,20 +223,41 @@ function AssetList({ refreshKey }: AssetListProps) {
                 ) : (
                   <div className="flex-1 space-y-2 text-sm text-gray-300">
                     <div className="flex justify-between">
+                      <span className="text-gray-500">Ticket ID:</span>{' '}
+                      <span>{asset.ticketId}</span>
+                    </div>
+                    <div className="flex justify-between">
                       <span className="text-gray-500">Vendor:</span>{' '}
                       <span>{asset.vendor}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Vendor Pickup Date:</span>{' '}
+                      <span>
+                        {asset.vendorPickupDate?.toLocaleString() ?? 'N/A'}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Branch:</span>{' '}
                       <span>{asset.branch}</span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="text-gray-500">Date Received:</span>
+                      <span>
+                        {asset.dateReceived.toLocaleString() ?? 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Received By:</span>{' '}
+                      <span>{asset.receivedBy}</span>
+                    </div>
+
+                    <div className="flex justify-between">
                       <span className="text-gray-500">Repair Cost:</span>{' '}
                       <span className="text-green-500 font-mono">
                         ₦{asset.repairCost?.toLocaleString() ?? '0'}
                       </span>
                     </div>
-                    <div className="mt-4 p-3 bg-black/20 rounded-lg border border-gray-800/50">
+                    <div className="mt-4 p-3 bg-black/20 rounded-lg border border-neutral-800/50">
                       <p className="text-xs text-gray-500 leading-relaxed italic line-clamp-2">
                         "{asset.faultReported || 'No description provided'}"
                       </p>
@@ -240,7 +268,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                 <div className="mt-6 flex items-center gap-2">
                   <button
                     onClick={() => handleAuditToggle(asset.assetTag)}
-                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors py-2 border border-gray-800 rounded-lg hover:bg-gray-800"
+                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors py-2 border border-neutral-800 rounded-lg hover:bg-neutral-800"
                   >
                     {openAuditFor === asset.assetTag
                       ? 'Hide History'
@@ -255,16 +283,16 @@ function AssetList({ refreshKey }: AssetListProps) {
                           repairCost: asset.repairCost || '',
                         });
                       }}
-                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-gray-800 rounded-lg hover:bg-gray-800 transition-all"
+                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg hover:bg-neutral-800 transition-all"
                     >
-                      ✏️
+                      <PencilLine className="w-4 h-4" />
                     </button>
                   )}
                 </div>
 
                 {/* Audit Trail Dropdown */}
                 {openAuditFor === asset.assetTag && (
-                  <div className="mt-4 p-4 bg-black/40 rounded-xl border border-gray-800/50 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="mt-4 p-4 bg-black/40 rounded-xl border border-neutral-800/50 space-y-4 animate-in fade-in zoom-in-95 duration-200">
                     <h4 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">
                       Audit Trail
                     </h4>
@@ -275,10 +303,10 @@ function AssetList({ refreshKey }: AssetListProps) {
                     ) : auditLogs.length === 0 ? (
                       <p className="text-[10px] text-gray-700">No logs.</p>
                     ) : (
-                      <ul className="space-y-3 border-l border-gray-800 pl-4 ml-1">
+                      <ul className="space-y-3 border-l border-neutral-800 pl-4 ml-1">
                         {auditLogs.map((log) => (
                           <li key={log.id} className="relative">
-                            <span className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-gray-800 border border-gray-700" />
+                            <span className="absolute -left-5.25 top-1 w-2 h-2 rounded-full bg-neutral-800 border border-neutral-700" />
                             <p className="text-[11px] text-gray-200">
                               <span className="font-bold text-green-500">
                                 {log.user || 'System'}
