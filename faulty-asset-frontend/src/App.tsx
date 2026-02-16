@@ -24,11 +24,15 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const [activeView, setActiveView] = useState<View>('stats');
   const [showCreateAsset, setShowCreateAsset] = useState(false);
 
   // const roles = useMemo(() => getUserRoles(), [loggedIn]);
-  const displayUser = useMemo(() => getDisplayUser(), [loggedIn]);
+  const displayUser = useMemo(
+    () => getDisplayUser(),
+    [loggedIn, profileRefreshKey],
+  );
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -213,7 +217,13 @@ function App() {
                 {activeView === 'assets' && (
                   <AssetList refreshKey={refreshKey} />
                 )}
-                {activeView === 'profile' && <ProfilePage />}
+                {activeView === 'profile' && (
+                  <ProfilePage
+                    onProfileUpdated={() =>
+                      setProfileRefreshKey((k) => k + 1)
+                    }
+                  />
+                )}
               </>
             )}
           </div>

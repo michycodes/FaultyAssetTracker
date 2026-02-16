@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { getPlatformUsers } from '../services/users';
 
 type AssetForm = {
   category: string;
@@ -22,6 +23,17 @@ type CreateAssetProps = {
   onCreated?: () => void;
 };
 
+const vendorOptions = [
+  'Chams Access',
+  'Pajuno Development Company',
+  'Sterling PRO',
+  'PFS',
+  'BAYTOBY',
+  'CARDZPLANET NIGERIA LIMITED',
+  'MASTERP GLOBAL NIG LIMITED',
+  'YAYIN TECHNOLOGIES',
+] as const;
+
 const initialForm: AssetForm = {
   category: '',
   assetName: '',
@@ -41,6 +53,20 @@ const initialForm: AssetForm = {
 function CreateAsset({ onCreated }: CreateAssetProps) {
   const [form, setForm] = useState<AssetForm>(initialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [receivedByOptions, setReceivedByOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await getPlatformUsers();
+        setReceivedByOptions(users);
+      } catch {
+        toast.error('Could not load users list.');
+      }
+    };
+
+    void loadUsers();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -178,27 +204,43 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
           <label className="floating-label">Date Received</label>
         </div>
         <div className="relative h-14">
-          <input
+          <select
             name="receivedBy"
             value={form.receivedBy}
             onChange={handleChange}
-            className="peer input-field"
-            placeholder=" "
+            className="peer input-field appearance-none cursor-pointer"
             required
-          />
+          >
+            <option value="" disabled>
+              Select User
+            </option>
+            {receivedByOptions.map((user) => (
+              <option key={user} value={user}>
+                {user}
+              </option>
+            ))}
+          </select>
           <label className="floating-label">Received By</label>
         </div>
 
         {/* Row 5 */}
         <div className="relative h-14">
-          <input
+          <select
             name="vendor"
             value={form.vendor}
             onChange={handleChange}
-            className="peer input-field"
-            placeholder=" "
+            className="peer input-field appearance-none cursor-pointer"
             required
-          />
+          >
+            <option value="" disabled>
+              Select Vendor
+            </option>
+            {vendorOptions.map((vendor) => (
+              <option key={vendor} value={vendor}>
+                {vendor}
+              </option>
+            ))}
+          </select>
           <label className="floating-label">Vendor</label>
         </div>
         <div className="relative h-14">

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -31,10 +32,50 @@ public class AuthController : ControllerBase
 
         var roles = await _userManager.GetRolesAsync(user);
 
-        // build claims
+        return Ok(new
+        {
+            token = GenerateToken(user, roles)
+        });
+    }
+
+    [Authorize(Roles = "Admin,Employee")]
+    [HttpPut("change-name")]
+    public async Task<IActionResult> ChangeName([FromBody] ChangeNameRequest request)
+    {
+        var newName = (request.NewName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+            return BadRequest("name cannot be empty.");
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized("invalid token context.");
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return Unauthorized("user not found.");
+
+        var existingUser = await _userManager.FindByNameAsync(newName);
+        if (existingUser != null && existingUser.Id != user.Id)
+            return BadRequest("name already exists.");
+
+        user.UserName = newName;
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+            return BadRequest(updateResult.Errors.Select(e => e.Description));
+
+        var roles = await _userManager.GetRolesAsync(user);
+        return Ok(new
+        {
+            token = GenerateToken(user, roles),
+            displayName = user.UserName
+        });
+    }
+
+    private string GenerateToken(IdentityUser user, IList<string> roles)
+    {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, user.UserName),
+            new Claim(ClaimTypes.Name, user.UserName ?? user.Email ?? string.Empty),
             new Claim(ClaimTypes.NameIdentifier, user.Id)
         };
 
@@ -43,7 +84,6 @@ public class AuthController : ControllerBase
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // generate token
         var key = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_config["Jwt:Key"])
         );
@@ -58,9 +98,11 @@ public class AuthController : ControllerBase
             signingCredentials: creds
         );
 
-        return Ok(new
-        {
-            token = new JwtSecurityTokenHandler().WriteToken(token)
-        });
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
+}
+
+public class ChangeNameRequest
+{
+    public string NewName { get; set; } = string.Empty;
 }

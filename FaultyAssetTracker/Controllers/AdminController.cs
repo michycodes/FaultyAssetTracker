@@ -32,14 +32,29 @@ public class AdminController : ControllerBase
         return Ok("User created.");
     }
 
+    [Authorize(Roles = "Admin,Employee")]
+    [HttpGet("users")]
+    public ActionResult<IEnumerable<string>> GetUsers()
+    {
+        var users = _userManager.Users
+            .Select(u => u.UserName ?? u.Email ?? string.Empty)
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Distinct()
+            .OrderBy(u => u)
+            .ToList();
+
+        return Ok(users);
+    }
+
     
 
-    // DELETE: api/FaultyAssets/5(Deletes asset)
+    // DELETE: api/admin/{assetTag} (Deletes asset by asset tag)
     [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{assetTag}")]
+    public async Task<IActionResult> Delete(string assetTag)
     {
-        var asset = await _context.FaultyAssets.FindAsync(id);
+        var asset = await _context.FaultyAssets
+            .FirstOrDefaultAsync(a => a.AssetTag == assetTag);
         if (asset == null)
             return NotFound();
 

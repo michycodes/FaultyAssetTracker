@@ -23,6 +23,19 @@ export async function login(email: string, password: string) {
   return token;
 }
 
+export async function changeDisplayName(newName: string) {
+  const response = await api.put("/auth/change-name", {
+    newName,
+  });
+
+  const token = response.data?.token as string | undefined;
+  if (token) {
+    localStorage.setItem("token", token);
+  }
+
+  return response.data;
+}
+
 export function logout() {
   localStorage.removeItem("token");
 }

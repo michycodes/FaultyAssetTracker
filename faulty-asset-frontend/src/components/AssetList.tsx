@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import { toast } from 'react-toastify';
-import { PencilLine } from 'lucide-react';
+import { PencilLine, Trash2 } from 'lucide-react';
+import { getUserRoles } from '../services/auth';
+import { getPlatformUsers } from '../services/users';
 
 // Define the Edit Form interface to eliminate 'any'
 interface AssetEditForm {
@@ -52,6 +54,17 @@ const statusSortOrders: Record<SortBy, string[]> = {
   pending: ['Pending', 'In Repair', 'Repaired'],
 };
 
+const vendorOptions = [
+  'Chams Access',
+  'Pajuno Development Company',
+  'Sterling PRO',
+  'PFS',
+  'BAYTOBY',
+  'CARDZPLANET NIGERIA LIMITED',
+  'MASTERP GLOBAL NIG LIMITED',
+  'YAYIN TECHNOLOGIES',
+] as const;
+
 // Safe date formatter helper
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return 'N/A';
@@ -82,6 +95,8 @@ function AssetList({ refreshKey }: AssetListProps) {
   const [editingAssetTag, setEditingAssetTag] = useState('');
   const [editForm, setEditForm] = useState<AssetEditForm | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [receivedByOptions, setReceivedByOptions] = useState<string[]>([]);
+  const isAdmin = getUserRoles().some((role) => role.toLowerCase() === 'admin');
 
   const fetchAssets = async (showLoader = true) => {
     if (showLoader) setLoading(true);
@@ -98,6 +113,19 @@ function AssetList({ refreshKey }: AssetListProps) {
   useEffect(() => {
     void fetchAssets();
   }, [refreshKey]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await getPlatformUsers();
+        setReceivedByOptions(users);
+      } catch {
+        toast.error('Could not load users list.');
+      }
+    };
+
+    void loadUsers();
+  }, []);
 
   const filteredAssets = useMemo(() => {
     const list = assets.filter((a) =>
@@ -145,6 +173,39 @@ function AssetList({ refreshKey }: AssetListProps) {
       toast.error('Update failed.');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteAsset = async (asset: AssetListItem) => {
+    if (!isAdmin) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete asset "${asset.assetTag}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await api.delete(`/admin/${encodeURIComponent(asset.assetTag)}`);
+      toast.success('Asset deleted.');
+
+      if (openAuditFor === asset.assetTag) {
+        setOpenAuditFor('');
+        setAuditLogs([]);
+      }
+
+      if (editingAssetTag === asset.assetTag) {
+        setEditingAssetTag('');
+        setEditForm(null);
+      }
+
+      await fetchAssets(false);
+    } catch {
+      toast.error('Failed to delete asset.');
     }
   };
 
@@ -257,20 +318,44 @@ function AssetList({ refreshKey }: AssetListProps) {
                         setEditForm({ ...editForm, dateReceived: e.target.value })
                       }
                     />
-                    <EditInput
+                    <EditSelect
                       label="Received By"
                       value={editForm.receivedBy}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, receivedBy: e.target.value })
                       }
-                    />
-                    <EditInput
+                    >
+                      <option value="" disabled>
+                        Select User
+                      </option>
+                      {editForm.receivedBy &&
+                        !receivedByOptions.includes(editForm.receivedBy) && (
+                          <option value={editForm.receivedBy}>
+                            {editForm.receivedBy}
+                          </option>
+                        )}
+                      {receivedByOptions.map((user) => (
+                        <option key={user} value={user}>
+                          {user}
+                        </option>
+                      ))}
+                    </EditSelect>
+                    <EditSelect
                       label="Vendor"
                       value={editForm.vendor}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, vendor: e.target.value })
                       }
-                    />
+                    >
+                      <option value="" disabled>
+                        Select Vendor
+                      </option>
+                      {vendorOptions.map((vendor) => (
+                        <option key={vendor} value={vendor}>
+                          {vendor}
+                        </option>
+                      ))}
+                    </EditSelect>
                     <EditInput
                       label="Fault Reported"
                       value={editForm.faultReported}
@@ -380,6 +465,16 @@ function AssetList({ refreshKey }: AssetListProps) {
                       className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg"
                     >
                       <PencilLine className="w-4 h-4" />
+                    </button>
+                  )}
+                  {!isEditing && isAdmin && (
+                    <button
+                      onClick={() => void handleDeleteAsset(asset)}
+                      className="px-3 py-2 text-gray-500 hover:text-red-500 border border-neutral-800 rounded-lg"
+                      title="Delete asset"
+                      aria-label={`Delete asset ${asset.assetTag}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
