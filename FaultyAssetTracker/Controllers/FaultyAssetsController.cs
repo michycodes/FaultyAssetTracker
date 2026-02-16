@@ -25,11 +25,17 @@ namespace FaultyAssetTracker.Controllers
             return await _context.FaultyAssets
                 .Select(a => new FaultyAssetDto
                 {
-                    AssetTag = a.AssetTag,
+                    Category = a.Category,
+                    AssetName = a.AssetName,
+                    TicketId = a.TicketId,
                     SerialNo = a.SerialNo,
-                    Vendor = a.Vendor,
+                    AssetTag = a.AssetTag,
                     Branch = a.Branch,
+                    DateReceived = a.DateReceived,
+                    ReceivedBy = a.ReceivedBy,
+                    Vendor = a.Vendor,
                     FaultReported = a.FaultReported,
+                    VendorPickupDate = a.VendorPickupDate,
                     Status = a.Status,
                     RepairCost = a.RepairCost,
                     LastModifiedBy = _context.AuditLogs
@@ -55,13 +61,19 @@ namespace FaultyAssetTracker.Controllers
                 .Where(a => a.AssetTag == assetTag)
                 .Select(a => new FaultyAssetDto
                 {
-                    AssetTag = a.AssetTag,
+                    Category = a.Category,
+                    AssetName = a.AssetName,
+                    TicketId = a.TicketId,
                     SerialNo = a.SerialNo,
-                    Vendor = a.Vendor,
+                    AssetTag = a.AssetTag,
                     Branch = a.Branch,
+                    DateReceived = a.DateReceived,
+                    ReceivedBy = a.ReceivedBy,
+                    Vendor = a.Vendor,
                     FaultReported = a.FaultReported,
-                    Status = a.Status,
+                    VendorPickupDate = a.VendorPickupDate,
                     RepairCost = a.RepairCost,
+                    Status = a.Status,
                     LastModifiedBy = _context.AuditLogs
                         .Where(log => log.AssetId == a.Id)
                         .OrderByDescending(log => log.Timestamp)
@@ -137,13 +149,19 @@ namespace FaultyAssetTracker.Controllers
                 .Where(a => a.AssetTag == AssetTag)
                 .Select(a => new FaultyAssetDto
                 {
-                    AssetTag = a.AssetTag,
+                    Category = a.Category,
+                    AssetName = a.AssetName,
+                    TicketId = a.TicketId,
                     SerialNo = a.SerialNo,
-                    Vendor = a.Vendor,
+                    AssetTag = a.AssetTag,
                     Branch = a.Branch,
+                    DateReceived = a.DateReceived,
+                    ReceivedBy = a.ReceivedBy,
+                    Vendor = a.Vendor,
                     FaultReported = a.FaultReported,
-                    Status = a.Status,
+                    VendorPickupDate = a.VendorPickupDate,
                     RepairCost = a.RepairCost,
+                    Status = a.Status,
                     LastModifiedBy = _context.AuditLogs
                         .Where(log => log.AssetId == a.Id)
                         .OrderByDescending(log => log.Timestamp)
@@ -204,11 +222,45 @@ namespace FaultyAssetTracker.Controllers
                 return BadRequest("status must be: Pending, In Repair, or Repaired.");
 
             // update only what is allowed
+            if (string.IsNullOrWhiteSpace(updatedAsset.AssetTag)
+               || string.IsNullOrWhiteSpace(updatedAsset.SerialNo)
+               || string.IsNullOrWhiteSpace(updatedAsset.Category)
+               || string.IsNullOrWhiteSpace(updatedAsset.AssetName)
+               || string.IsNullOrWhiteSpace(updatedAsset.TicketId)
+               || string.IsNullOrWhiteSpace(updatedAsset.Branch)
+               || string.IsNullOrWhiteSpace(updatedAsset.ReceivedBy)
+               || string.IsNullOrWhiteSpace(updatedAsset.Vendor)
+               || string.IsNullOrWhiteSpace(updatedAsset.FaultReported))
+            {
+                return BadRequest("all required asset fields must be provided.");
+            }
+
+            bool duplicateAssetTag = await _context.FaultyAssets
+                .AnyAsync(a => a.AssetTag == updatedAsset.AssetTag && a.Id != existingAsset.Id);
+            if (duplicateAssetTag)
+                return BadRequest("asset tag already exists.");
+
+            bool duplicateSerialNo = await _context.FaultyAssets
+                .AnyAsync(a => a.SerialNo == updatedAsset.SerialNo && a.Id != existingAsset.Id);
+            if (duplicateSerialNo)
+                return BadRequest("serial number already exists.");
+
+            existingAsset.Category = updatedAsset.Category;
+            existingAsset.AssetName = updatedAsset.AssetName;
+            existingAsset.TicketId = updatedAsset.TicketId;
+            existingAsset.SerialNo = updatedAsset.SerialNo;
+            existingAsset.AssetTag = updatedAsset.AssetTag;
+            existingAsset.Branch = updatedAsset.Branch;
+            existingAsset.DateReceived = updatedAsset.DateReceived;
+            existingAsset.ReceivedBy = updatedAsset.ReceivedBy;
+            existingAsset.Vendor = updatedAsset.Vendor;
+            existingAsset.FaultReported = updatedAsset.FaultReported;
+            existingAsset.VendorPickupDate = updatedAsset.VendorPickupDate;
             existingAsset.Status = updatedAsset.Status;
             existingAsset.RepairCost = updatedAsset.RepairCost;
-            existingAsset.Vendor = string.IsNullOrWhiteSpace(updatedAsset.Vendor) ? existingAsset.Vendor : updatedAsset.Vendor;
-            existingAsset.Branch = string.IsNullOrWhiteSpace(updatedAsset.Branch) ? existingAsset.Branch : updatedAsset.Branch;
-            existingAsset.FaultReported = string.IsNullOrWhiteSpace(updatedAsset.FaultReported) ? existingAsset.FaultReported : updatedAsset.FaultReported;
+           // existingAsset.Vendor = string.IsNullOrWhiteSpace(updatedAsset.Vendor) ? existingAsset.Vendor : updatedAsset.Vendor;
+           // existingAsset.Branch = string.IsNullOrWhiteSpace(updatedAsset.Branch) ? existingAsset.Branch : updatedAsset.Branch;
+          //  existingAsset.FaultReported = string.IsNullOrWhiteSpace(updatedAsset.FaultReported) ? existingAsset.FaultReported : updatedAsset.FaultReported;
 
             await _context.SaveChangesAsync();
 

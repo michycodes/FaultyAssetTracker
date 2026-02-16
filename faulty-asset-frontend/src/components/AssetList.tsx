@@ -5,11 +5,19 @@ import { PencilLine } from 'lucide-react';
 
 // Define the Edit Form interface to eliminate 'any'
 interface AssetEditForm {
-  vendor: string;
+  category: string;
+  assetName: string;
+  ticketId: string;
+  serialNo: string;
+  assetTag: string;
   branch: string;
+  dateReceived: string;
+  receivedBy: string;
+  vendor: string;
   faultReported: string;
-  status: 'Pending' | 'In Repair' | 'Repaired';
+  vendorPickupDate: string;
   repairCost: string;
+  status: 'Pending' | 'In Repair' | 'Repaired';
 }
 
 type AssetListItem = {
@@ -52,6 +60,13 @@ const formatDate = (dateStr: string | null | undefined) => {
   } catch {
     return 'Invalid Date';
   }
+};
+
+const toDateInputValue = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().split('T')[0];
 };
 
 function AssetList({ refreshKey }: AssetListProps) {
@@ -118,6 +133,8 @@ function AssetList({ refreshKey }: AssetListProps) {
     try {
       await api.put(`/FaultyAssets/${encodeURIComponent(tag)}`, {
         ...editForm,
+              dateReceived: editForm.dateReceived,
+        vendorPickupDate: editForm.vendorPickupDate || null,
         repairCost:
           editForm.repairCost === '' ? null : Number(editForm.repairCost),
       });
@@ -191,10 +208,38 @@ function AssetList({ refreshKey }: AssetListProps) {
                 {isEditing && editForm ? (
                   <div className="space-y-3 flex-1">
                     <EditInput
-                      label="Vendor"
-                      value={editForm.vendor}
+                       label="Category"
+                      value={editForm.category}
                       onChange={(e: any) =>
-                        setEditForm({ ...editForm, vendor: e.target.value })
+                        setEditForm({ ...editForm, category: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Asset Name"
+                      value={editForm.assetName}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, assetName: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Ticket ID"
+                      value={editForm.ticketId}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, ticketId: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Serial No"
+                      value={editForm.serialNo}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, serialNo: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Asset Tag"
+                      value={editForm.assetTag}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, assetTag: e.target.value })
                       }
                     />
                     <EditInput
@@ -205,13 +250,65 @@ function AssetList({ refreshKey }: AssetListProps) {
                       }
                     />
                     <EditInput
-                      label="Cost"
+                      label="Date Received"
+                      type="date"
+                      value={editForm.dateReceived}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, dateReceived: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Received By"
+                      value={editForm.receivedBy}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, receivedBy: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Vendor"
+                      value={editForm.vendor}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, vendor: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Fault Reported"
+                      value={editForm.faultReported}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, faultReported: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Vendor Pickup Date"
+                      type="date"
+                      value={editForm.vendorPickupDate}
+                      onChange={(e: any) =>
+                        setEditForm({ ...editForm, vendorPickupDate: e.target.value })
+                      }
+                    />
+                    <EditInput
+                      label="Repair Cost"
                       type="number"
+                      min={0}
                       value={editForm.repairCost}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, repairCost: e.target.value })
                       }
                     />
+                    <EditSelect
+                      label="Status"
+                      value={editForm.status}
+                      onChange={(e: any) =>
+                        setEditForm({
+                          ...editForm,
+                          status: e.target.value as AssetEditForm['status'],
+                        })
+                      }
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Repair">In Repair</option>
+                      <option value="Repaired">Repaired</option>
+                    </EditSelect>
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => handleSaveEdit(asset.assetTag)}
@@ -229,28 +326,33 @@ function AssetList({ refreshKey }: AssetListProps) {
                   </div>
                 ) : (
                   <div className="flex-1 space-y-2 text-sm text-gray-300">
+                    <DetailRow label="Category" value={asset.category} />
+                    <DetailRow label="Asset Name" value={asset.assetName} />
                     <DetailRow label="Ticket ID" value={asset.ticketId} />
-                    <DetailRow label="Vendor" value={asset.vendor} />
-                    <DetailRow
-                      label="Pickup"
-                      value={formatDate(asset.vendorPickupDate)}
-                    />
+                                        <DetailRow label="Serial No" value={asset.serialNo} />
+                    <DetailRow label="Asset Tag" value={asset.assetTag} />
                     <DetailRow label="Branch" value={asset.branch} />
                     <DetailRow
-                      label="Received"
+                      label="Date Received"
                       value={formatDate(asset.dateReceived)}
                     />
-                    <DetailRow label="By" value={asset.receivedBy} />
-                    <div className="flex justify-between font-mono">
-                      <span className="text-gray-500">Cost:</span>
-                      <span className="text-green-500">
-                        ₦{asset.repairCost?.toLocaleString() ?? '0'}
-                      </span>
-                    </div>
+                                        <DetailRow label="Received By" value={asset.receivedBy} />
+                    <DetailRow label="Vendor" value={asset.vendor} />
+                    <DetailRow
+                      label="Vendor Pickup Date"
+                      value={formatDate(asset.vendorPickupDate)}
+                    />
+                    <DetailRow label="Status" value={asset.status} />
                     <div className="mt-4 p-3 bg-black/20 rounded-lg border border-neutral-800/50">
                       <p className="text-xs text-gray-500 italic line-clamp-2">
                         "{asset.faultReported || 'No description'}"
                       </p>
+                    </div>
+                                        <div className="flex justify-between font-mono">
+                      <span className="text-gray-500">Repair Cost:</span>
+                      <span className="text-green-500">
+                        ₦{asset.repairCost?.toLocaleString() ?? '0'}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -264,12 +366,14 @@ function AssetList({ refreshKey }: AssetListProps) {
                       ? 'Hide History'
                       : 'View History'}
                   </button>
-                  {!isEditing && asset.status === 'Pending' && (
+                  {!isEditing && (
                     <button
                       onClick={() => {
                         setEditingAssetTag(asset.assetTag);
                         setEditForm({
                           ...asset,
+                          dateReceived: toDateInputValue(asset.dateReceived),
+                          vendorPickupDate: toDateInputValue(asset.vendorPickupDate),
                           repairCost: asset.repairCost?.toString() || '',
                         });
                       }}
@@ -347,6 +451,19 @@ const EditInput = ({ label, ...props }: any) => (
       {...props}
       className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-green-500 transition-all"
     />
+  </div>
+);
+const EditSelect = ({ label, children, ...props }: any) => (
+  <div className="space-y-1">
+    <label className="text-[9px] uppercase font-bold text-gray-600 ml-1">
+      {label}
+    </label>
+    <select
+      {...props}
+      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-green-500 transition-all"
+    >
+      {children}
+    </select>
   </div>
 );
 
