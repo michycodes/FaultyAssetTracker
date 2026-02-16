@@ -12,6 +12,15 @@ namespace FaultyAssetTracker.Controllers
     public class FaultyAssetsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private static readonly string[] AllowedStatuses =
+        {
+            "Pending",
+            "In Repair",
+            "Repaired",
+            "EOL (End of Life)",
+            "Fixed and Dispatched to Branch",
+            "Dispatched to Vendor"
+        };
 
         public FaultyAssetsController(AppDbContext context)
         {
@@ -104,13 +113,11 @@ namespace FaultyAssetTracker.Controllers
             if (exists)
                 return BadRequest("this asset already exists.");
 
-            var allowedStatuses = new[] { "Pending", "In Repair", "Repaired" };
-
             if (asset.RepairCost < 0)
                 return BadRequest("repair cost cannot be negative.");
 
-            if (!allowedStatuses.Contains(asset.Status))
-                return BadRequest("status must be: Pending, In Repair, or Repaired.");
+            if (!AllowedStatuses.Contains(asset.Status))
+                return BadRequest($"status must be one of: {string.Join(", ", AllowedStatuses)}.");
 
             _context.FaultyAssets.Add(asset);
             await _context.SaveChangesAsync();
@@ -129,6 +136,9 @@ namespace FaultyAssetTracker.Controllers
             var pending = await _context.FaultyAssets.CountAsync(a => a.Status == "Pending");
             var inRepair = await _context.FaultyAssets.CountAsync(a => a.Status == "In Repair");
             var repaired = await _context.FaultyAssets.CountAsync(a => a.Status == "Repaired");
+            var eol = await _context.FaultyAssets.CountAsync(a => a.Status == "EOL (End of Life)");
+            var fixedAndDispatchedToBranch = await _context.FaultyAssets.CountAsync(a => a.Status == "Fixed and Dispatched to Branch");
+            var dispatchedToVendor = await _context.FaultyAssets.CountAsync(a => a.Status == "Dispatched to Vendor");
             var totalRepairCost = await _context.FaultyAssets.SumAsync(a => a.RepairCost);
 
             return Ok(new
@@ -137,6 +147,9 @@ namespace FaultyAssetTracker.Controllers
                 Pending = pending,
                 InRepair = inRepair,
                 Repaired = repaired,
+                Eol = eol,
+                FixedAndDispatchedToBranch = fixedAndDispatchedToBranch,
+                DispatchedToVendor = dispatchedToVendor,
                 TotalRepairCost = totalRepairCost
             });
         }
@@ -213,13 +226,11 @@ namespace FaultyAssetTracker.Controllers
             if (existingAsset == null)
                 return NotFound("asset not found.");
 
-            var allowedStatuses = new[] { "Pending", "In Repair", "Repaired" };
-
             if (updatedAsset.RepairCost < 0)
                 return BadRequest("repair cost cannot be negative.");
 
-            if (!allowedStatuses.Contains(updatedAsset.Status))
-                return BadRequest("status must be: Pending, In Repair, or Repaired.");
+            if (!AllowedStatuses.Contains(updatedAsset.Status))
+                return BadRequest($"status must be one of: {string.Join(", ", AllowedStatuses)}.");
 
             // update only what is allowed
             if (string.IsNullOrWhiteSpace(updatedAsset.AssetTag)

@@ -3,6 +3,14 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { getPlatformUsers } from '../services/users';
 
+type AssetStatus =
+  | 'Pending'
+  | 'In Repair'
+  | 'Repaired'
+  | 'EOL (End of Life)'
+  | 'Fixed and Dispatched to Branch'
+  | 'Dispatched to Vendor';
+
 type AssetForm = {
   category: string;
   assetName: string;
@@ -16,7 +24,7 @@ type AssetForm = {
   faultReported: string;
   vendorPickupDate: string;
   repairCost: string;
-  status: 'Pending' | 'In Repair' | 'Repaired';
+  status: AssetStatus;
 };
 
 type CreateAssetProps = {
@@ -277,6 +285,11 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
             <option value="Pending">Pending</option>
             <option value="In Repair">In Repair</option>
             <option value="Repaired">Repaired</option>
+            <option value="EOL (End of Life)">EOL (End of Life)</option>
+            <option value="Fixed and Dispatched to Branch">
+              Fixed and Dispatched to Branch
+            </option>
+            <option value="Dispatched to Vendor">Dispatched to Vendor</option>
           </select>
           <label className="floating-label">Status</label>
         </div>

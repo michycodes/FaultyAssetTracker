@@ -5,6 +5,14 @@ import { PencilLine, Trash2 } from 'lucide-react';
 import { getUserRoles } from '../services/auth';
 import { getPlatformUsers } from '../services/users';
 
+type AssetStatus =
+  | 'Pending'
+  | 'In Repair'
+  | 'Repaired'
+  | 'EOL (End of Life)'
+  | 'Fixed and Dispatched to Branch'
+  | 'Dispatched to Vendor';
+
 // Define the Edit Form interface to eliminate 'any'
 interface AssetEditForm {
   category: string;
@@ -19,7 +27,7 @@ interface AssetEditForm {
   faultReported: string;
   vendorPickupDate: string;
   repairCost: string;
-  status: 'Pending' | 'In Repair' | 'Repaired';
+  status: AssetStatus;
 }
 
 type AssetListItem = {
@@ -35,7 +43,7 @@ type AssetListItem = {
   faultReported: string;
   vendorPickupDate: string | null; // Stored as string from API
   repairCost: number | null;
-  status: 'Pending' | 'In Repair' | 'Repaired';
+  status: AssetStatus;
 };
 
 type AuditLogItem = {
@@ -46,12 +54,63 @@ type AuditLogItem = {
 };
 
 type AssetListProps = { refreshKey: number };
-type SortBy = 'repaired' | 'inRepair' | 'pending';
+type SortBy =
+  | 'repaired'
+  | 'inRepair'
+  | 'pending'
+  | 'eol'
+  | 'fixedDispatchedToBranch'
+  | 'dispatchedToVendor';
 
 const statusSortOrders: Record<SortBy, string[]> = {
-  repaired: ['Repaired', 'In Repair', 'Pending'],
-  inRepair: ['In Repair', 'Pending', 'Repaired'],
-  pending: ['Pending', 'In Repair', 'Repaired'],
+  repaired: [
+    'Repaired',
+    'In Repair',
+    'Pending',
+    'Fixed and Dispatched to Branch',
+    'Dispatched to Vendor',
+    'EOL (End of Life)',
+  ],
+  inRepair: [
+    'In Repair',
+    'Pending',
+    'Repaired',
+    'Fixed and Dispatched to Branch',
+    'Dispatched to Vendor',
+    'EOL (End of Life)',
+  ],
+  pending: [
+    'Pending',
+    'In Repair',
+    'Repaired',
+    'Fixed and Dispatched to Branch',
+    'Dispatched to Vendor',
+    'EOL (End of Life)',
+  ],
+  eol: [
+    'EOL (End of Life)',
+    'Pending',
+    'In Repair',
+    'Repaired',
+    'Fixed and Dispatched to Branch',
+    'Dispatched to Vendor',
+  ],
+  fixedDispatchedToBranch: [
+    'Fixed and Dispatched to Branch',
+    'Pending',
+    'In Repair',
+    'Repaired',
+    'Dispatched to Vendor',
+    'EOL (End of Life)',
+  ],
+  dispatchedToVendor: [
+    'Dispatched to Vendor',
+    'Pending',
+    'In Repair',
+    'Repaired',
+    'Fixed and Dispatched to Branch',
+    'EOL (End of Life)',
+  ],
 };
 
 const vendorOptions = [
@@ -133,9 +192,12 @@ function AssetList({ refreshKey }: AssetListProps) {
     );
     const order = statusSortOrders[sortBy].map((s) => s.toLowerCase());
     return list.sort(
-      (a, b) =>
-        order.indexOf(a.status.toLowerCase()) -
-        order.indexOf(b.status.toLowerCase()),
+      (a, b) => {
+        const aIndex = order.indexOf(a.status.toLowerCase());
+        const bIndex = order.indexOf(b.status.toLowerCase());
+        const fallback = Number.MAX_SAFE_INTEGER;
+        return (aIndex === -1 ? fallback : aIndex) - (bIndex === -1 ? fallback : bIndex);
+      },
     );
   }, [assets, searchTerm, sortBy]);
 
@@ -236,6 +298,11 @@ function AssetList({ refreshKey }: AssetListProps) {
             <option value="pending">Sort by Pending</option>
             <option value="inRepair">Sort by In Repair</option>
             <option value="repaired">Sort by Repaired</option>
+            <option value="eol">Sort by EOL</option>
+            <option value="fixedDispatchedToBranch">
+              Sort by Fixed and Dispatched to Branch
+            </option>
+            <option value="dispatchedToVendor">Sort by Dispatched to Vendor</option>
           </select>
         </div>
       </div>
@@ -393,6 +460,13 @@ function AssetList({ refreshKey }: AssetListProps) {
                       <option value="Pending">Pending</option>
                       <option value="In Repair">In Repair</option>
                       <option value="Repaired">Repaired</option>
+                      <option value="EOL (End of Life)">EOL (End of Life)</option>
+                      <option value="Fixed and Dispatched to Branch">
+                        Fixed and Dispatched to Branch
+                      </option>
+                      <option value="Dispatched to Vendor">
+                        Dispatched to Vendor
+                      </option>
                     </EditSelect>
                     <div className="flex gap-2 pt-2">
                       <button
@@ -523,14 +597,21 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const StatusBadge = ({ status }: { status: string }) => {
-  const themes: any = {
+  const themes: Record<string, string> = {
     Pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
     'In Repair': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     Repaired: 'bg-green-500/10 text-green-500 border-green-500/20',
+    'EOL (End of Life)': 'bg-red-500/10 text-red-500 border-red-500/20',
+    'Fixed and Dispatched to Branch':
+      'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    'Dispatched to Vendor':
+      'bg-orange-500/10 text-orange-500 border-orange-500/20',
   };
   return (
     <span
-      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider ${themes[status]}`}
+      className={`px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider ${
+        themes[status] ?? 'bg-neutral-500/10 text-neutral-300 border-neutral-500/20'
+      }`}
     >
       {status}
     </span>
