@@ -100,10 +100,10 @@ export function getDisplayUser() {
   }
 
   return (
-    payload.email ||
-    payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ||
     payload.unique_name ||
     payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+    payload.email ||
+    payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"] ||
     ""
   );
 }

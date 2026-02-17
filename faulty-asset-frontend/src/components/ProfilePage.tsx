@@ -43,7 +43,7 @@ function ProfilePage({ onProfileUpdated }: ProfilePageProps) {
       await changeDisplayName(trimmedName);
       setCurrentUser(trimmedName);
       setNewName(trimmedName);
-      toast.success('Name updated successfully.');
+      toast.success('Name has been changed successfully.');
       onProfileUpdated?.();
     } catch (error: any) {
       const data = error.response?.data;
