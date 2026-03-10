@@ -32,6 +32,20 @@ public class AdminController : ControllerBase
         return Ok("User created.");
     }
 
+    [HttpDelete("users/{username}")]
+    public async Task<IActionResult> DeleteUser(string username)
+    {
+        var user = await _userManager.FindByNameAsync(username);
+        if (user == null)
+            return NotFound("User not found.");
+
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
+
+        return NoContent();
+    }
+
     [Authorize(Roles = "Admin,Employee")]
     [HttpGet("users")]
     public ActionResult<IEnumerable<string>> GetUsers()

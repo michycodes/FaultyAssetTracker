@@ -1,31 +1,36 @@
-import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import { useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
-import AssetList from './components/AssetList';
-import AssetStats from './components/AssetStats';
-import CreateAsset from './components/CreateAsset';
-import ProfilePage from './components/ProfilePage';
+import AssetList from "./components/AssetList";
+import AssetStats from "./components/AssetStats";
+import CreateAsset from "./components/CreateAsset";
+import ProfilePage from "./components/ProfilePage";
+import CreateUser from "./components/CreateUser";
+import { ShieldCheck } from "lucide-react";
+import ManageUsers from "./components/ManageUsers";
+import { Users } from "lucide-react";
 import {
   getDisplayUser,
+  getUserRoles,
   // getUserRoles,
   isLoggedIn,
   login,
   logout,
-} from './services/auth';
-import { toast, ToastContainer } from 'react-toastify';
-import NavButton from './components/NavButton';
-import { Box, ChartPie, User } from 'lucide-react';
+} from "./services/auth";
+import { toast, ToastContainer } from "react-toastify";
+import NavButton from "./components/NavButton";
+import { Box, ChartPie, User } from "lucide-react";
 
-type View = 'stats' | 'assets' | 'profile';
+type View = "stats" | "assets" | "profile" | "admin" | "manageUsers";
 
 function App() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
-  const [activeView, setActiveView] = useState<View>('stats');
+  const [activeView, setActiveView] = useState<View>("stats");
   const [showCreateAsset, setShowCreateAsset] = useState(false);
 
   // const roles = useMemo(() => getUserRoles(), [loggedIn]);
@@ -33,19 +38,23 @@ function App() {
     () => getDisplayUser(),
     [loggedIn, profileRefreshKey],
   );
+  const isAdmin = useMemo(
+    () => getUserRoles().some((r) => r.toLowerCase() === "admin"),
+    [loggedIn],
+  );
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     try {
       await login(email, password);
       setLoggedIn(true);
-      setPassword('');
+      setPassword("");
       setRefreshKey((k) => k + 1);
       toast.success(`Welcome back, ${email}!`);
     } catch {
-      toast.error('Login failed. Check your email/password.');
+      toast.error("Login failed. Check your email/password.");
     }
   };
 
@@ -53,7 +62,7 @@ function App() {
     logout();
     setLoggedIn(false);
     setShowCreateAsset(false);
-    toast.info('Logged out successfully');
+    toast.info("Logged out successfully");
   };
 
   // const handleCreated = () => {
@@ -69,8 +78,7 @@ function App() {
         <ToastContainer position="top-right" autoClose={3000} theme="dark" />
         <form
           onSubmit={handleLogin}
-          className="p-8 flex flex-col border  rounded-lg w-full max-w-sm justify-center gap-8 bg-background shadow-md"
-        >
+          className="p-8 flex flex-col border  rounded-lg w-full max-w-sm justify-center gap-8 bg-background shadow-md">
           <div className="text-center">
             <h1 className="text-2xl font-semibold">Faulty Asset Tracker</h1>
             <h2 className="text-lg opacity-70">Login</h2>
@@ -109,8 +117,7 @@ function App() {
           </div>
           <button
             type="submit"
-            className="bg-primary text-background/80 hover:bg-background/50 hover:border-primary transition-all duration-300 font-semibold hover:text-secondary py-2 px-4 rounded border border-transparent"
-          >
+            className="bg-primary text-background/80 hover:bg-background/50 hover:border-primary transition-all duration-300 font-semibold hover:text-secondary py-2 px-4 rounded border border-transparent">
             Login
           </button>
           {error && <p className="error-text">{error}</p>}
@@ -133,53 +140,79 @@ function App() {
 
         <nav className="flex-1 px-4 space-y-2">
           <NavButton
-            active={activeView === 'stats'}
+            active={activeView === "stats"}
             onClick={() => {
-              setActiveView('stats');
+              setActiveView("stats");
               setShowCreateAsset(false);
-            }}
-          >
+            }}>
             <div className="flex items-center gap-2">
               <ChartPie
-                className={`${activeView === 'stats' ? 'text-secondary' : 'text-amber-800'} w-5 h-5`}
-              />{' '}
+                className={`${activeView === "stats" ? "text-secondary" : "text-amber-800"} w-5 h-5`}
+              />{" "}
               Overview
             </div>
           </NavButton>
           <NavButton
-            active={activeView === 'assets'}
+            active={activeView === "assets"}
             onClick={() => {
-              setActiveView('assets');
+              setActiveView("assets");
               setShowCreateAsset(false);
-            }}
-          >
+            }}>
             <div className="flex items-center gap-2">
               <Box
-                className={`${activeView === 'assets' ? 'text-secondary' : 'text-cyan-800'} w-5 h-5`}
-              />{' '}
+                className={`${activeView === "assets" ? "text-secondary" : "text-cyan-800"} w-5 h-5`}
+              />{" "}
               All Assets
             </div>
           </NavButton>
           <NavButton
-            active={activeView === 'profile'}
+            active={activeView === "profile"}
             onClick={() => {
-              setActiveView('profile');
+              setActiveView("profile");
               setShowCreateAsset(false);
-            }}
-          >
+            }}>
             <div className="flex items-center gap-2">
               <User
-                className={`${activeView === 'profile' ? 'text-secondary' : 'text-purple-800'} w-5 h-5  `}
-              />{' '}
+                className={`${activeView === "profile" ? "text-secondary" : "text-purple-800"} w-5 h-5  `}
+              />{" "}
               Profile
             </div>
           </NavButton>
+          {isAdmin && (
+            <NavButton
+              active={activeView === "admin"}
+              onClick={() => {
+                setActiveView("admin");
+                setShowCreateAsset(false);
+              }}>
+              <div className="flex items-center gap-2">
+                <ShieldCheck
+                  className={`${activeView === "admin" ? "text-secondary" : "text-rose-800"} w-5 h-5`}
+                />
+                Admin
+              </div>
+            </NavButton>
+          )}
+          {isAdmin && (
+            <NavButton
+              active={activeView === "manageUsers"}
+              onClick={() => {
+                setActiveView("manageUsers");
+                setShowCreateAsset(false);
+              }}>
+              <div className="flex items-center gap-2">
+                <Users
+                  className={`${activeView === "manageUsers" ? "text-secondary" : "text-rose-800"} w-5 h-5`}
+                />
+                Manage Users
+              </div>
+            </NavButton>
+          )}
         </nav>
         <div className="p-4 border-t border-neutral-800">
           <button
             onClick={handleLogout}
-            className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-          >
+            className="w-full text-left px-4 py-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
             Logout
           </button>
         </div>
@@ -189,13 +222,12 @@ function App() {
         <header className=" shadow-sm flex items-center justify-between py-5 px-8 bg-background/80 backdrop-blur-md">
           <div>
             <span className="text-sm text-gray-400">Welcome, </span>
-            <span className="font-semibold">{displayUser || 'User'}</span>
+            <span className="font-semibold">{displayUser || "User"}</span>
           </div>
           <button
             onClick={() => setShowCreateAsset(!showCreateAsset)}
-            className="bg-primary text-background border border-transparent hover:border-primary hover:bg-transparent hover:text-secondary transition-all duration-300 px-4 py-2 rounded-lg text-sm font-bold "
-          >
-            {showCreateAsset ? 'Close Form' : '+ Track New Asset'}
+            className="bg-primary text-background border border-transparent hover:border-primary hover:bg-transparent hover:text-secondary transition-all duration-300 px-4 py-2 rounded-lg text-sm font-bold ">
+            {showCreateAsset ? "Close Form" : "+ Track New Asset"}
           </button>
         </header>
 
@@ -206,24 +238,24 @@ function App() {
                 onCreated={() => {
                   setRefreshKey((k) => k + 1);
                   setShowCreateAsset(false);
-                  setActiveView('assets');
+                  setActiveView("assets");
                 }}
               />
             ) : (
               <>
-                {activeView === 'stats' && (
+                {activeView === "stats" && (
                   <AssetStats refreshKey={refreshKey} />
                 )}
-                {activeView === 'assets' && (
+                {activeView === "assets" && (
                   <AssetList refreshKey={refreshKey} />
                 )}
-                {activeView === 'profile' && (
+                {activeView === "profile" && (
                   <ProfilePage
-                    onProfileUpdated={() =>
-                      setProfileRefreshKey((k) => k + 1)
-                    }
+                    onProfileUpdated={() => setProfileRefreshKey((k) => k + 1)}
                   />
                 )}
+                {activeView === "admin" && isAdmin && <CreateUser />}
+                {activeView === 'manageUsers' && isAdmin && <ManageUsers />}
               </>
             )}
           </div>
