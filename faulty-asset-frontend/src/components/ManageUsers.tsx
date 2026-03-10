@@ -111,7 +111,7 @@ function ManageUsers() {
                 >
                   <div className="flex items-center gap-3">
                     {/* Avatar initials */}
-                    <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center shrink-0">
                       <span className="text-[10px] font-black text-secondary">
                         {user.substring(0, 2).toUpperCase()}
                       </span>
