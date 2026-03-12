@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
-import api from '../services/api';
-import { toast } from 'react-toastify';
-import { getPlatformUsers } from '../services/users';
+import { useEffect, useState } from "react";
+import api from "../services/api";
+import { toast } from "react-toastify";
+import { getPlatformUsers } from "../services/users";
 
 type AssetStatus =
-  | 'Pending'
-  | 'In Repair'
-  | 'Repaired'
-  | 'EOL (End of Life)'
-  | 'Fixed and Dispatched to Branch'
-  | 'Dispatched to Vendor';
+  | "Pending"
+  | "In Repair"
+  | "Repaired"
+  | "EOL (End of Life)"
+  | "Fixed and Dispatched to Branch"
+  | "Dispatched to Vendor";
 
 type AssetForm = {
   category: string;
@@ -32,34 +32,40 @@ type CreateAssetProps = {
 };
 
 const vendorOptions = [
-  'Chams Access',
-  'Pajuno Development Company',
-  'Sterling PRO',
-  'PFS',
-  'BAYTOBY',
-  'CARDZPLANET NIGERIA LIMITED',
-  'MASTERP GLOBAL NIG LIMITED',
-  'YAYIN TECHNOLOGIES',
+  "Chams Access",
+  "Pajuno Development Company",
+  "Sterling PRO",
+  "PFS",
+  "BAYTOBY",
+  "CARDZPLANET NIGERIA LIMITED",
+  "MASTERP GLOBAL NIG LIMITED",
+  "YAYIN TECHNOLOGIES",
 ] as const;
 
-const initialForm: AssetForm = {
-  category: '',
-  assetName: '',
-  ticketId: '',
-  serialNo: '',
-  assetTag: '',
-  branch: '',
-  dateReceived: '',
-  receivedBy: '',
-  vendor: '',
-  faultReported: '',
-  vendorPickupDate: '',
-  repairCost: '',
-  status: 'Pending',
+const getTodayDate = () => {
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return localDate.toISOString().split("T")[0];
 };
 
+const createInitialForm = (): AssetForm => ({
+  category: "",
+  assetName: "",
+  ticketId: "",
+  serialNo: "",
+  assetTag: "",
+  branch: "",
+  dateReceived: getTodayDate(),
+  receivedBy: "",
+  vendor: "",
+  faultReported: "",
+  vendorPickupDate: "",
+  repairCost: "",
+  status: "Pending",
+});
+
 function CreateAsset({ onCreated }: CreateAssetProps) {
-  const [form, setForm] = useState<AssetForm>(initialForm);
+  const [form, setForm] = useState<AssetForm>(createInitialForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receivedByOptions, setReceivedByOptions] = useState<string[]>([]);
 
@@ -69,7 +75,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
         const users = await getPlatformUsers();
         setReceivedByOptions(users);
       } catch {
-        toast.error('Could not load users list.');
+        toast.error("Could not load users list.");
       }
     };
 
@@ -92,20 +98,20 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
     setIsSubmitting(true);
 
     try {
-      await api.post('/FaultyAssets', {
+      await api.post("/FaultyAssets", {
         ...form,
         vendorPickupDate: form.vendorPickupDate || null,
-        repairCost: form.repairCost === '' ? null : Number(form.repairCost),
+        repairCost: form.repairCost === "" ? null : Number(form.repairCost),
       });
 
-      toast.success('Asset tracked successfully!');
-      setForm(initialForm);
+      toast.success("Asset tracked successfully!");
+      setForm(createInitialForm);
       onCreated?.();
     } catch (error: any) {
       const message =
         error.response?.data?.title ||
         error.response?.data ||
-        'Failed to create asset.';
+        "Failed to create asset.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -125,8 +131,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
 
       <form
         onSubmit={handleSubmit}
-        className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full"
-      >
+        className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
         {/* Row 1 */}
         <div className="relative h-14">
           <input
@@ -217,8 +222,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
             value={form.receivedBy}
             onChange={handleChange}
             className="peer input-field appearance-none cursor-pointer"
-            required
-          >
+            required>
             <option value="" disabled>
               Select User
             </option>
@@ -238,8 +242,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
             value={form.vendor}
             onChange={handleChange}
             className="peer input-field appearance-none cursor-pointer"
-            required
-          >
+            required>
             <option value="" disabled>
               Select Vendor
             </option>
@@ -280,8 +283,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
             name="status"
             value={form.status}
             onChange={handleChange}
-            className="peer input-field appearance-none cursor-pointer"
-          >
+            className="peer input-field appearance-none cursor-pointer">
             <option value="Pending">Pending</option>
             <option value="In Repair">In Repair</option>
             <option value="Repaired">Repaired</option>
@@ -308,8 +310,7 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
             className="absolute left-3  -translate-y-1/2 px-1 text-gray-400 transition-all duration-200
                  pointer-events-none bg-background
                  peer-focus:top-0 peer-focus:text-xs peer-focus:text-secondary
-                 peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs"
-          >
+                 peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs">
             Fault Reported
           </label>
         </div>
@@ -317,9 +318,8 @@ function CreateAsset({ onCreated }: CreateAssetProps) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="md:col-span-2 bg-primary disabled:bg-gray-700   py-4  transition-all active:scale-[0.98] cursor-pointer text-background/80 hover:bg-background/50 hover:border-primary  duration-300 font-semibold hover:text-secondary px-4 rounded-lg border border-transparent"
-        >
-          {isSubmitting ? 'Processing...' : 'Create Asset Entry'}
+          className="md:col-span-2 bg-primary disabled:bg-gray-700   py-4  transition-all active:scale-[0.98] cursor-pointer text-background/80 hover:bg-background/50 hover:border-primary  duration-300 font-semibold hover:text-secondary px-4 rounded-lg border border-transparent">
+          {isSubmitting ? "Processing..." : "Create Asset Entry"}
         </button>
       </form>
     </div>

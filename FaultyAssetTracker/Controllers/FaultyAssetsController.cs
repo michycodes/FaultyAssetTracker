@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using FaultyAssetTracker.Data;
 using FaultyAssetTracker.Models;
 using Microsoft.AspNetCore.Authorization;
+using ClosedXML.Excel;
 
 namespace FaultyAssetTracker.Controllers
 {
@@ -299,6 +300,79 @@ namespace FaultyAssetTracker.Controllers
 
             _context.AuditLogs.Add(log);
             await _context.SaveChangesAsync();
+        }
+
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportToExcel(
+            [FromQuery] string? status,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to)
+        {
+            var query = _context.FaultyAssets.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(a => a.Status == status);
+
+            if (from.HasValue)
+                query = query.Where(a => a.DateReceived >= from.Value.Date);
+
+            if (to.HasValue)
+                query = query.Where(a => a.DateReceived <= to.Value.Date);
+
+            var assets = await query
+                .OrderByDescending(a => a.DateReceived)
+                .ToListAsync();
+
+            using var workbook = new XLWorkbook();
+            var ws = workbook.Worksheets.Add("Faulty Assets");
+
+            // Header
+            ws.Cell(1, 1).Value = "Category";
+            ws.Cell(1, 2).Value = "Asset Name";
+            ws.Cell(1, 3).Value = "Ticket ID";
+            ws.Cell(1, 4).Value = "Serial No";
+            ws.Cell(1, 5).Value = "Asset Tag";
+            ws.Cell(1, 6).Value = "Branch";
+            ws.Cell(1, 7).Value = "Date Received";
+            ws.Cell(1, 8).Value = "Received By";
+            ws.Cell(1, 9).Value = "Vendor";
+            ws.Cell(1, 10).Value = "Fault Reported";
+            ws.Cell(1, 11).Value = "Vendor Pickup Date";
+            ws.Cell(1, 12).Value = "Repair Cost";
+            ws.Cell(1, 13).Value = "Status";
+
+            for (int i = 0; i < assets.Count; i++)
+            {
+                var a = assets[i];
+                int row = i + 2;
+
+                ws.Cell(row, 1).Value = a.Category;
+                ws.Cell(row, 2).Value = a.AssetName;
+                ws.Cell(row, 3).Value = a.TicketId;
+                ws.Cell(row, 4).Value = a.SerialNo;
+                ws.Cell(row, 5).Value = a.AssetTag;
+                ws.Cell(row, 6).Value = a.Branch;
+                ws.Cell(row, 7).Value = a.DateReceived;
+                ws.Cell(row, 8).Value = a.ReceivedBy;
+                ws.Cell(row, 9).Value = a.Vendor;
+                ws.Cell(row, 10).Value = a.FaultReported;
+                ws.Cell(row, 11).Value = a.VendorPickupDate;
+                ws.Cell(row, 12).Value = a.RepairCost;
+                ws.Cell(row, 13).Value = a.Status;
+            }
+
+            ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+
+            var fileName = $"faulty-assets-{DateTime.UtcNow:yyyyMMdd-HHmm}.xlsx";
+            return File(
+                stream.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName
+            );
         }
     }
 }   

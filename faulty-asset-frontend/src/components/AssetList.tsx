@@ -1,17 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
-import api from '../services/api';
-import { toast } from 'react-toastify';
-import { PencilLine, Trash2 } from 'lucide-react';
-import { getUserRoles } from '../services/auth';
-import { getPlatformUsers } from '../services/users';
+import { useState, useEffect, useMemo } from "react";
+import api from "../services/api";
+import { toast } from "react-toastify";
+import { Download, PencilLine, Trash2 } from "lucide-react";
+import { getUserRoles } from "../services/auth";
+import { getPlatformUsers } from "../services/users";
 
 type AssetStatus =
-  | 'Pending'
-  | 'In Repair'
-  | 'Repaired'
-  | 'EOL (End of Life)'
-  | 'Fixed and Dispatched to Branch'
-  | 'Dispatched to Vendor';
+  | "Pending"
+  | "In Repair"
+  | "Repaired"
+  | "EOL (End of Life)"
+  | "Fixed and Dispatched to Branch"
+  | "Dispatched to Vendor";
 
 // Define the Edit Form interface to eliminate 'any'
 interface AssetEditForm {
@@ -55,115 +55,118 @@ type AuditLogItem = {
 
 type AssetListProps = { refreshKey: number };
 type SortBy =
-  | 'repaired'
-  | 'inRepair'
-  | 'pending'
-  | 'eol'
-  | 'fixedDispatchedToBranch'
-  | 'dispatchedToVendor';
+  | "repaired"
+  | "inRepair"
+  | "pending"
+  | "eol"
+  | "fixedDispatchedToBranch"
+  | "dispatchedToVendor";
 
 const statusSortOrders: Record<SortBy, string[]> = {
   repaired: [
-    'Repaired',
-    'In Repair',
-    'Pending',
-    'Fixed and Dispatched to Branch',
-    'Dispatched to Vendor',
-    'EOL (End of Life)',
+    "Repaired",
+    "In Repair",
+    "Pending",
+    "Fixed and Dispatched to Branch",
+    "Dispatched to Vendor",
+    "EOL (End of Life)",
   ],
   inRepair: [
-    'In Repair',
-    'Pending',
-    'Repaired',
-    'Fixed and Dispatched to Branch',
-    'Dispatched to Vendor',
-    'EOL (End of Life)',
+    "In Repair",
+    "Pending",
+    "Repaired",
+    "Fixed and Dispatched to Branch",
+    "Dispatched to Vendor",
+    "EOL (End of Life)",
   ],
   pending: [
-    'Pending',
-    'In Repair',
-    'Repaired',
-    'Fixed and Dispatched to Branch',
-    'Dispatched to Vendor',
-    'EOL (End of Life)',
+    "Pending",
+    "In Repair",
+    "Repaired",
+    "Fixed and Dispatched to Branch",
+    "Dispatched to Vendor",
+    "EOL (End of Life)",
   ],
   eol: [
-    'EOL (End of Life)',
-    'Pending',
-    'In Repair',
-    'Repaired',
-    'Fixed and Dispatched to Branch',
-    'Dispatched to Vendor',
+    "EOL (End of Life)",
+    "Pending",
+    "In Repair",
+    "Repaired",
+    "Fixed and Dispatched to Branch",
+    "Dispatched to Vendor",
   ],
   fixedDispatchedToBranch: [
-    'Fixed and Dispatched to Branch',
-    'Pending',
-    'In Repair',
-    'Repaired',
-    'Dispatched to Vendor',
-    'EOL (End of Life)',
+    "Fixed and Dispatched to Branch",
+    "Pending",
+    "In Repair",
+    "Repaired",
+    "Dispatched to Vendor",
+    "EOL (End of Life)",
   ],
   dispatchedToVendor: [
-    'Dispatched to Vendor',
-    'Pending',
-    'In Repair',
-    'Repaired',
-    'Fixed and Dispatched to Branch',
-    'EOL (End of Life)',
+    "Dispatched to Vendor",
+    "Pending",
+    "In Repair",
+    "Repaired",
+    "Fixed and Dispatched to Branch",
+    "EOL (End of Life)",
   ],
 };
 
 const vendorOptions = [
-  'Chams Access',
-  'Pajuno Development Company',
-  'Sterling PRO',
-  'PFS',
-  'BAYTOBY',
-  'CARDZPLANET NIGERIA LIMITED',
-  'MASTERP GLOBAL NIG LIMITED',
-  'YAYIN TECHNOLOGIES',
+  "Chams Access",
+  "Pajuno Development Company",
+  "Sterling PRO",
+  "PFS",
+  "BAYTOBY",
+  "CARDZPLANET NIGERIA LIMITED",
+  "MASTERP GLOBAL NIG LIMITED",
+  "YAYIN TECHNOLOGIES",
 ] as const;
 
 // Safe date formatter helper
 const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return 'N/A';
+  if (!dateStr) return "N/A";
   try {
     return new Date(dateStr).toLocaleDateString();
   } catch {
-    return 'Invalid Date';
+    return "Invalid Date";
   }
 };
 
 const toDateInputValue = (dateStr: string | null | undefined) => {
-  if (!dateStr) return '';
+  if (!dateStr) return "";
   const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().split('T')[0];
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().split("T")[0];
 };
 
 function AssetList({ refreshKey }: AssetListProps) {
   const [assets, setAssets] = useState<AssetListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<SortBy>('pending');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>("pending");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterReceivedBy, setFilterReceivedBy] = useState("");
+  const [filterVendor, setFilterVendor] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
-  const [openAuditFor, setOpenAuditFor] = useState('');
+  const [openAuditFor, setOpenAuditFor] = useState("");
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
 
-  const [editingAssetTag, setEditingAssetTag] = useState('');
+  const [editingAssetTag, setEditingAssetTag] = useState("");
   const [editForm, setEditForm] = useState<AssetEditForm | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [receivedByOptions, setReceivedByOptions] = useState<string[]>([]);
-  const isAdmin = getUserRoles().some((role) => role.toLowerCase() === 'admin');
+  const isAdmin = getUserRoles().some((role) => role.toLowerCase() === "admin");
 
   const fetchAssets = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {
-      const response = await api.get<AssetListItem[]>('/FaultyAssets');
+      const response = await api.get<AssetListItem[]>("/FaultyAssets");
       setAssets(response.data);
     } catch {
-      toast.error('Could not load assets.');
+      toast.error("Could not load assets.");
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -179,30 +182,64 @@ function AssetList({ refreshKey }: AssetListProps) {
         const users = await getPlatformUsers();
         setReceivedByOptions(users);
       } catch {
-        toast.error('Could not load users list.');
+        toast.error("Could not load users list.");
       }
     };
 
     void loadUsers();
   }, []);
 
+  // REPLACE WITH:
   const filteredAssets = useMemo(() => {
-    const list = assets.filter((a) =>
-      a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
+    let list = assets.filter((a) => {
+      const matchesSearch =
+        a.assetTag.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        a.serialNo.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesReceivedBy =
+        !filterReceivedBy || a.receivedBy === filterReceivedBy;
+      const matchesVendor = !filterVendor || a.vendor === filterVendor;
+      const matchesCategory = !filterCategory || a.category === filterCategory;
+      return (
+        matchesSearch && matchesReceivedBy && matchesVendor && matchesCategory
+      );
+    });
+
     const order = statusSortOrders[sortBy].map((s) => s.toLowerCase());
-    return list.sort(
-      (a, b) => {
-        const aIndex = order.indexOf(a.status.toLowerCase());
-        const bIndex = order.indexOf(b.status.toLowerCase());
-        const fallback = Number.MAX_SAFE_INTEGER;
-        return (aIndex === -1 ? fallback : aIndex) - (bIndex === -1 ? fallback : bIndex);
-      },
-    );
-  }, [assets, searchTerm, sortBy]);
+    list = list.sort((a, b) => {
+      const aIndex = order.indexOf(a.status.toLowerCase());
+      const bIndex = order.indexOf(b.status.toLowerCase());
+      const fallback = Number.MAX_SAFE_INTEGER;
+      return (
+        (aIndex === -1 ? fallback : aIndex) -
+        (bIndex === -1 ? fallback : bIndex)
+      );
+    });
+
+    return list;
+  }, [
+    assets,
+    searchTerm,
+    sortBy,
+    filterReceivedBy,
+    filterVendor,
+    filterCategory,
+  ]);
+
+  const uniqueReceivedBy = useMemo(
+    () => [...new Set(assets.map((a) => a.receivedBy).filter(Boolean))].sort(),
+    [assets],
+  );
+  const uniqueVendors = useMemo(
+    () => [...new Set(assets.map((a) => a.vendor).filter(Boolean))].sort(),
+    [assets],
+  );
+  const uniqueCategories = useMemo(
+    () => [...new Set(assets.map((a) => a.category).filter(Boolean))].sort(),
+    [assets],
+  );
 
   const handleAuditToggle = async (tag: string) => {
-    if (openAuditFor === tag) return setOpenAuditFor('');
+    if (openAuditFor === tag) return setOpenAuditFor("");
     setOpenAuditFor(tag);
     setAuditLoading(true);
     try {
@@ -211,7 +248,7 @@ function AssetList({ refreshKey }: AssetListProps) {
       );
       setAuditLogs(res.data);
     } catch {
-      toast.error('Failed to load audit logs.');
+      toast.error("Failed to load audit logs.");
     } finally {
       setAuditLoading(false);
     }
@@ -223,18 +260,39 @@ function AssetList({ refreshKey }: AssetListProps) {
     try {
       await api.put(`/FaultyAssets/${encodeURIComponent(tag)}`, {
         ...editForm,
-              dateReceived: editForm.dateReceived,
+        dateReceived: editForm.dateReceived,
         vendorPickupDate: editForm.vendorPickupDate || null,
         repairCost:
-          editForm.repairCost === '' ? null : Number(editForm.repairCost),
+          editForm.repairCost === "" ? null : Number(editForm.repairCost),
       });
-      toast.success('Asset updated!');
-      setEditingAssetTag('');
+      toast.success("Asset updated!");
+      setEditingAssetTag("");
       await fetchAssets(false);
     } catch {
-      toast.error('Update failed.');
+      toast.error("Update failed.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/FaultyAssets/export/excel', {
+        responseType: 'blob',
+      });
+
+      const downloadUrl = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      const disposition = response.headers['content-disposition'] as string | undefined;
+      const fileNameMatch = disposition?.match(/filename=\"?([^\";]+)\"?/i);
+      link.href = downloadUrl;
+      link.download = fileNameMatch?.[1] ?? `faulty-assets-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch {
+      toast.error('Failed to export Excel report.');
     }
   };
 
@@ -253,59 +311,120 @@ function AssetList({ refreshKey }: AssetListProps) {
 
     try {
       await api.delete(`/admin/${encodeURIComponent(asset.assetTag)}`);
-      toast.success('Asset deleted.');
+      toast.success("Asset deleted.");
 
       if (openAuditFor === asset.assetTag) {
-        setOpenAuditFor('');
+        setOpenAuditFor("");
         setAuditLogs([]);
       }
 
       if (editingAssetTag === asset.assetTag) {
-        setEditingAssetTag('');
+        setEditingAssetTag("");
         setEditForm(null);
       }
 
       await fetchAssets(false);
     } catch {
-      toast.error('Failed to delete asset.');
+      toast.error("Failed to delete asset.");
     }
   };
 
-  if (loading)
+  if (loading){
     return (
       <div className="text-center py-20 animate-pulse text-gray-500">
         Loading assets...
       </div>
     );
+  }
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <h2 className="text-2xl font-bold text-white">Assets Inventory</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search Tag..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none w-full md:w-64 transition-all"
-          />
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer w-full md:w-auto"
+<div className="flex flex-col gap-4 mb-8">
+  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <h2 className="text-2xl font-bold text-white">Assets Inventory</h2>
+    <input
+      type="text"
+      placeholder="Search by tag or serial no..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none w-full md:w-72 transition-all"
+    />
+  </div>
+
+  <div className="flex flex-wrap gap-3 items-center">
+    <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+      Sort & Filter:
+    </span>
+
+    <select
+      value={sortBy}
+      onChange={(e) => setSortBy(e.target.value as SortBy)}
+      className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+    >
+      <option value="pending">Status: Pending first</option>
+      <option value="inRepair">Status: In Repair first</option>
+      <option value="repaired">Status: Repaired first</option>
+      <option value="eol">Status: EOL first</option>
+      <option value="fixedDispatchedToBranch">Status: Fixed & Dispatched first</option>
+      <option value="dispatchedToVendor">Status: Vendor Dispatched first</option>
+    </select>
+
+    <select
+      value={filterCategory}
+      onChange={(e) => setFilterCategory(e.target.value)}
+      className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+    >
+      <option value="">All Categories</option>
+      {uniqueCategories.map((c) => (
+        <option key={c} value={c}>{c}</option>
+      ))}
+    </select>
+
+    <select
+      value={filterVendor}
+      onChange={(e) => setFilterVendor(e.target.value)}
+      className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+    >
+      <option value="">All Vendors</option>
+      {uniqueVendors.map((v) => (
+        <option key={v} value={v}>{v}</option>
+      ))}
+    </select>
+
+    <select
+      value={filterReceivedBy}
+      onChange={(e) => setFilterReceivedBy(e.target.value)}
+      className="bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-green-500 cursor-pointer"
+    >
+      <option value="">All Recipients</option>
+      {uniqueReceivedBy.map((r) => (
+        <option key={r} value={r}>{r}</option>
+      ))}
+    </select>
+
+    <button
+            onClick={() => void handleExportExcel()}
+            className="inline-flex items-center justify-center gap-2 bg-neutral-900/50 border border-neutral-800 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none hover:border-green-500 hover:text-white transition-all cursor-pointer"
           >
-            <option value="pending">Sort by Pending</option>
-            <option value="inRepair">Sort by In Repair</option>
-            <option value="repaired">Sort by Repaired</option>
-            <option value="eol">Sort by EOL</option>
-            <option value="fixedDispatchedToBranch">
-              Sort by Fixed and Dispatched to Branch
-            </option>
-            <option value="dispatchedToVendor">Sort by Dispatched to Vendor</option>
-          </select>
-        </div>
-      </div>
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+
+    {(filterCategory || filterVendor || filterReceivedBy || searchTerm) && (
+      <button
+        onClick={() => {
+          setFilterCategory('');
+          setFilterVendor('');
+          setFilterReceivedBy('');
+          setSearchTerm('');
+        }}
+        className="px-3 py-2 text-xs text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 rounded-lg transition-all"
+      >
+        Clear Filters
+      </button>
+    )}
+  </div>
+</div>
 
       {filteredAssets.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-neutral-800 rounded-2xl text-gray-500">
@@ -319,8 +438,7 @@ function AssetList({ refreshKey }: AssetListProps) {
             return (
               <article
                 key={asset.assetTag}
-                className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 hover:border-gray-700 transition-all flex flex-col"
-              >
+                className="bg-neutral-900/40 border border-neutral-800 rounded-2xl p-6 hover:border-gray-700 transition-all flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div className="space-y-1">
                     <h3 className="text-lg font-bold text-white group-hover:text-green-500 transition-colors">
@@ -336,7 +454,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                 {isEditing && editForm ? (
                   <div className="space-y-3 flex-1">
                     <EditInput
-                       label="Category"
+                      label="Category"
                       value={editForm.category}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, category: e.target.value })
@@ -382,7 +500,10 @@ function AssetList({ refreshKey }: AssetListProps) {
                       type="date"
                       value={editForm.dateReceived}
                       onChange={(e: any) =>
-                        setEditForm({ ...editForm, dateReceived: e.target.value })
+                        setEditForm({
+                          ...editForm,
+                          dateReceived: e.target.value,
+                        })
                       }
                     />
                     <EditSelect
@@ -390,8 +511,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                       value={editForm.receivedBy}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, receivedBy: e.target.value })
-                      }
-                    >
+                      }>
                       <option value="" disabled>
                         Select User
                       </option>
@@ -412,8 +532,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                       value={editForm.vendor}
                       onChange={(e: any) =>
                         setEditForm({ ...editForm, vendor: e.target.value })
-                      }
-                    >
+                      }>
                       <option value="" disabled>
                         Select Vendor
                       </option>
@@ -427,7 +546,10 @@ function AssetList({ refreshKey }: AssetListProps) {
                       label="Fault Reported"
                       value={editForm.faultReported}
                       onChange={(e: any) =>
-                        setEditForm({ ...editForm, faultReported: e.target.value })
+                        setEditForm({
+                          ...editForm,
+                          faultReported: e.target.value,
+                        })
                       }
                     />
                     <EditInput
@@ -435,7 +557,10 @@ function AssetList({ refreshKey }: AssetListProps) {
                       type="date"
                       value={editForm.vendorPickupDate}
                       onChange={(e: any) =>
-                        setEditForm({ ...editForm, vendorPickupDate: e.target.value })
+                        setEditForm({
+                          ...editForm,
+                          vendorPickupDate: e.target.value,
+                        })
                       }
                     />
                     <EditInput
@@ -453,14 +578,15 @@ function AssetList({ refreshKey }: AssetListProps) {
                       onChange={(e: any) =>
                         setEditForm({
                           ...editForm,
-                          status: e.target.value as AssetEditForm['status'],
+                          status: e.target.value as AssetEditForm["status"],
                         })
-                      }
-                    >
+                      }>
                       <option value="Pending">Pending</option>
                       <option value="In Repair">In Repair</option>
                       <option value="Repaired">Repaired</option>
-                      <option value="EOL (End of Life)">EOL (End of Life)</option>
+                      <option value="EOL (End of Life)">
+                        EOL (End of Life)
+                      </option>
                       <option value="Fixed and Dispatched to Branch">
                         Fixed and Dispatched to Branch
                       </option>
@@ -471,14 +597,12 @@ function AssetList({ refreshKey }: AssetListProps) {
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => handleSaveEdit(asset.assetTag)}
-                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg"
-                      >
-                        {editLoading ? '...' : 'Save'}
+                        className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg">
+                        {editLoading ? "..." : "Save"}
                       </button>
                       <button
-                        onClick={() => setEditingAssetTag('')}
-                        className="flex-1 bg-neutral-800 text-gray-400 text-xs font-bold py-2 rounded-lg"
-                      >
+                        onClick={() => setEditingAssetTag("")}
+                        className="flex-1 bg-neutral-800 text-gray-400 text-xs font-bold py-2 rounded-lg">
                         Cancel
                       </button>
                     </div>
@@ -488,14 +612,14 @@ function AssetList({ refreshKey }: AssetListProps) {
                     <DetailRow label="Category" value={asset.category} />
                     <DetailRow label="Asset Name" value={asset.assetName} />
                     <DetailRow label="Ticket ID" value={asset.ticketId} />
-                                        <DetailRow label="Serial No" value={asset.serialNo} />
+                    <DetailRow label="Serial No" value={asset.serialNo} />
                     <DetailRow label="Asset Tag" value={asset.assetTag} />
                     <DetailRow label="Branch" value={asset.branch} />
                     <DetailRow
                       label="Date Received"
                       value={formatDate(asset.dateReceived)}
                     />
-                                        <DetailRow label="Received By" value={asset.receivedBy} />
+                    <DetailRow label="Received By" value={asset.receivedBy} />
                     <DetailRow label="Vendor" value={asset.vendor} />
                     <DetailRow
                       label="Vendor Pickup Date"
@@ -504,13 +628,13 @@ function AssetList({ refreshKey }: AssetListProps) {
                     <DetailRow label="Status" value={asset.status} />
                     <div className="mt-4 p-3 bg-black/20 rounded-lg border border-neutral-800/50">
                       <p className="text-xs text-gray-500 italic line-clamp-2">
-                        "{asset.faultReported || 'No description'}"
+                        "{asset.faultReported || "No description"}"
                       </p>
                     </div>
-                                        <div className="flex justify-between font-mono">
+                    <div className="flex justify-between font-mono">
                       <span className="text-gray-500">Repair Cost:</span>
                       <span className="text-green-500">
-                        ₦{asset.repairCost?.toLocaleString() ?? '0'}
+                        ₦{asset.repairCost?.toLocaleString() ?? "0"}
                       </span>
                     </div>
                   </div>
@@ -519,11 +643,10 @@ function AssetList({ refreshKey }: AssetListProps) {
                 <div className="mt-6 flex items-center gap-2">
                   <button
                     onClick={() => handleAuditToggle(asset.assetTag)}
-                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white py-2 border border-neutral-800 rounded-lg"
-                  >
+                    className="flex-1 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-white py-2 border border-neutral-800 rounded-lg">
                     {openAuditFor === asset.assetTag
-                      ? 'Hide History'
-                      : 'View History'}
+                      ? "Hide History"
+                      : "View History"}
                   </button>
                   {!isEditing && (
                     <button
@@ -532,12 +655,13 @@ function AssetList({ refreshKey }: AssetListProps) {
                         setEditForm({
                           ...asset,
                           dateReceived: toDateInputValue(asset.dateReceived),
-                          vendorPickupDate: toDateInputValue(asset.vendorPickupDate),
-                          repairCost: asset.repairCost?.toString() || '',
+                          vendorPickupDate: toDateInputValue(
+                            asset.vendorPickupDate,
+                          ),
+                          repairCost: asset.repairCost?.toString() || "",
                         });
                       }}
-                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg"
-                    >
+                      className="px-3 py-2 text-gray-500 hover:text-green-500 border border-neutral-800 rounded-lg">
                       <PencilLine className="w-4 h-4" />
                     </button>
                   )}
@@ -546,8 +670,7 @@ function AssetList({ refreshKey }: AssetListProps) {
                       onClick={() => void handleDeleteAsset(asset)}
                       className="px-3 py-2 text-gray-500 hover:text-red-500 border border-neutral-800 rounded-lg"
                       title="Delete asset"
-                      aria-label={`Delete asset ${asset.assetTag}`}
-                    >
+                      aria-label={`Delete asset ${asset.assetTag}`}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -566,8 +689,8 @@ function AssetList({ refreshKey }: AssetListProps) {
                             <span className="absolute -left-5.25 top-1.5 w-2 h-2 rounded-full bg-neutral-800 border border-neutral-700" />
                             <p className="text-gray-200">
                               <span className="font-bold text-green-500">
-                                {log.user || 'System'}
-                              </span>{' '}
+                                {log.user || "System"}
+                              </span>{" "}
                               {log.action}
                             </p>
                             <p className="text-[9px] text-gray-600">
@@ -598,21 +721,21 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 
 const StatusBadge = ({ status }: { status: string }) => {
   const themes: Record<string, string> = {
-    Pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-    'In Repair': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    Repaired: 'bg-green-500/10 text-green-500 border-green-500/20',
-    'EOL (End of Life)': 'bg-red-500/10 text-red-500 border-red-500/20',
-    'Fixed and Dispatched to Branch':
-      'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    'Dispatched to Vendor':
-      'bg-orange-500/10 text-orange-500 border-orange-500/20',
+    Pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    "In Repair": "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    Repaired: "bg-green-500/10 text-green-500 border-green-500/20",
+    "EOL (End of Life)": "bg-red-500/10 text-red-500 border-red-500/20",
+    "Fixed and Dispatched to Branch":
+      "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    "Dispatched to Vendor":
+      "bg-orange-500/10 text-orange-500 border-orange-500/20",
   };
   return (
     <span
       className={`px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider ${
-        themes[status] ?? 'bg-neutral-500/10 text-neutral-300 border-neutral-500/20'
-      }`}
-    >
+        themes[status] ??
+        "bg-neutral-500/10 text-neutral-300 border-neutral-500/20"
+      }`}>
       {status}
     </span>
   );
@@ -636,8 +759,7 @@ const EditSelect = ({ label, children, ...props }: any) => (
     </label>
     <select
       {...props}
-      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-green-500 transition-all"
-    >
+      className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-green-500 transition-all">
       {children}
     </select>
   </div>
