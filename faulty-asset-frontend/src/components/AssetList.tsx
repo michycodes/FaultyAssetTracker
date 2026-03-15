@@ -277,7 +277,7 @@ function AssetList({ refreshKey }: AssetListProps) {
 
   const handleExportExcel = async () => {
     try {
-      const response = await api.get('/FaultyAssets/export/excel', {
+      const response = await api.get('/FaultyAssets/export', {
         responseType: 'blob',
       });
 
