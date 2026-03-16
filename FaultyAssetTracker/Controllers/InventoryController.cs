@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FaultyAssetTracker.Controllers
 {
-   // [Authorize(Roles = "Admin,Employee")]
+   [Authorize(Roles = "Admin,Employee")]
     [Route("api/[controller]")]
     [ApiController]
     public class InventoryController : ControllerBase
@@ -41,7 +41,7 @@ namespace FaultyAssetTracker.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Employee")]
         public async Task<ActionResult<InventoryAsset>> Create(CreateInventoryAssetDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.AssetTag)
